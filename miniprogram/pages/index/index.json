@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "橙猪",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 100,
+  "usingComponents": {}
+}

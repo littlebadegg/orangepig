@@ -1,0 +1,8 @@
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: #ccc;
+  font-size: 28rpx;
+}

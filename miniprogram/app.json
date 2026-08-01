@@ -1,0 +1,94 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/detail/detail",
+    "pages/search/search",
+    "pages/mine/mine"
+  ],
+  "subpackages": [
+    {
+      "root": "subpackages/user-center",
+      "name": "user-center",
+      "pages": [
+        "pages/profile/profile",
+        "pages/settings/settings",
+        "pages/messages/messages"
+      ]
+    },
+    {
+      "root": "subpackages/content-create",
+      "name": "content-create",
+      "pages": [
+        "pages/publish/publish",
+        "pages/edit/edit"
+      ]
+    },
+    {
+      "root": "subpackages/social",
+      "name": "social",
+      "pages": [
+        "pages/comments/comments",
+        "pages/likes/likes",
+        "pages/follows/follows"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["user-center"]
+    },
+    "pages/detail/detail": {
+      "network": "all",
+      "packages": ["social"]
+    }
+  },
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "橙猪",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f7f7",
+    "enablePullDownRefresh": true,
+    "onReachBottomDistance": 100
+  },
+  "tabBar": {
+    "color": "#888888",
+    "selectedColor": "#FF6B35",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/tab/home.png",
+        "selectedIconPath": "images/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/search/search",
+        "text": "相册",
+        "iconPath": "images/tab/album.png",
+        "selectedIconPath": "images/tab/album-active.png"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的",
+        "iconPath": "images/tab/mine.png",
+        "selectedIconPath": "images/tab/mine-active.png"
+      }
+    ]
+  },
+  "useExtendedLib": {
+    "weui": true
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "renderer": "webview",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于在上传照片时记录拍摄地点"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"]
+}

@@ -1,0 +1,113 @@
+/* 全局样式 — 内容社交小程序设计系统 */
+
+page {
+  --color-primary: #FF6B35;
+  --color-primary-light: #FF8C42;
+  --color-bg: #f7f7f7;
+  --color-card: #ffffff;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #999999;
+  --color-border: #f0f0f0;
+  --radius-sm: 8rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 24rpx;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 28rpx;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  box-sizing: border-box;
+}
+
+view, text, image, scroll-view, swiper, navigator {
+  box-sizing: border-box;
+}
+
+/* 通用卡片 */
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-md);
+  padding: 30rpx;
+  margin: 20rpx;
+}
+
+/* 安全区域底部留白 */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 单行省略 */
+.ellipsis {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 多行省略 */
+.ellipsis-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* flex 工具类 */
+.flex {
+  display: flex;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.flex-1 {
+  flex: 1;
+}
+
+/* 间距 */
+.gap-sm {
+  gap: 10rpx;
+}
+.gap-md {
+  gap: 20rpx;
+}
+.gap-lg {
+  gap: 30rpx;
+}
+
+/* 按钮 */
+.btn-primary {
+  background: linear-gradient(135deg, #FF8C42, #FF6B35);
+  color: #fff;
+  border: none;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+}
+
+.btn-primary::after {
+  border: none;
+}
+
+/* 文字颜色 */
+.text-primary {
+  color: var(--color-primary);
+}
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+.text-tertiary {
+  color: var(--color-text-tertiary);
+}

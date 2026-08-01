@@ -1,0 +1,115 @@
+<!-- 相册页 -->
+<view class="album-page">
+  <!-- 顶部 Tab -->
+  <view class="album-tabs">
+    <view
+      class="tab-item {{activeTab === 'time' ? 'active' : ''}}"
+      data-tab="time"
+      bindtap="onTabChange"
+    >按时间</view>
+    <view
+      class="tab-item {{activeTab === 'location' ? 'active' : ''}}"
+      data-tab="location"
+      bindtap="onTabChange"
+    >按地点</view>
+    <view class="tab-spacer"></view>
+    <view class="upload-btn" bindtap="onUploadPhoto">
+      <text class="upload-icon">+</text>
+      <text class="upload-text">上传</text>
+    </view>
+  </view>
+
+  <!-- 照片统计 -->
+  <view class="photo-summary" wx:if="{{!loading && photoCount > 0}}">
+    <text class="summary-text">共 {{photoCount}} 张照片</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <view class="skeleton-grid">
+      <view class="skeleton-item" wx:for="{{[1,2,3,4,5,6]}}" wx:key="*this"></view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && photoCount === 0}}">
+    <view class="empty-icon">📷</view>
+    <text class="empty-text">还没有照片</text>
+    <view class="empty-btn" bindtap="onUploadPhoto">上传第一张照片</view>
+  </view>
+
+  <!-- 按时间分组 -->
+  <view class="photo-groups" wx:if="{{!loading && activeTab === 'time'}}">
+    <view
+      class="photo-group"
+      wx:for="{{groups}}"
+      wx:key="date"
+      wx:for-index="gi"
+    >
+      <view class="group-header">
+        <text class="group-date">{{item.dateText}}</text>
+        <text class="group-count">{{item.photos.length}} 张</text>
+      </view>
+      <view class="photo-grid">
+        <view
+          class="photo-item"
+          wx:for="{{item.photos}}"
+          wx:key="id"
+          wx:for-item="photo"
+          wx:for-index="pi"
+          data-group-index="{{gi}}"
+          data-photo-index="{{pi}}"
+          data-photo-id="{{photo.id}}"
+          bindtap="onPreviewPhoto"
+          bindlongpress="onLongPressPhoto"
+        >
+          <image
+            class="photo-img"
+            src="{{photo.imageUrl}}"
+            mode="aspectFill"
+            lazy-load
+          ></image>
+          <view class="photo-info" wx:if="{{photo.location}}">
+            <text class="photo-location">📍 {{photo.location}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 按地点分组 -->
+  <view class="photo-groups" wx:if="{{!loading && activeTab === 'location'}}">
+    <view
+      class="location-group"
+      wx:for="{{groups}}"
+      wx:key="location"
+      wx:for-index="gi"
+    >
+      <view class="group-header" data-group-index="{{gi}}" bindtap="onPreviewGroup">
+        <text class="group-location">📍 {{item.location}}</text>
+        <text class="group-count">{{item.photoCount}} 张</text>
+      </view>
+      <view class="photo-grid">
+        <view
+          class="photo-item"
+          wx:for="{{item.photos}}"
+          wx:key="id"
+          wx:for-item="photo"
+          wx:for-index="pi"
+          data-group-index="{{gi}}"
+          data-photo-index="{{pi}}"
+          data-photo-id="{{photo.id}}"
+          bindtap="onPreviewPhoto"
+          bindlongpress="onLongPressPhoto"
+        >
+          <image
+            class="photo-img"
+            src="{{photo.imageUrl}}"
+            mode="aspectFill"
+            lazy-load
+          ></image>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

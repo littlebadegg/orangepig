@@ -1,0 +1,3 @@
+<view class="placeholder">
+  <text>{{loading ? '加载中...' : '页面建设中'}}</text>
+</view>

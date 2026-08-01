@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Environment files (contains secrets!)
+.env
+server/.env
+
+# Uploaded files (user data)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# WeChat DevTools
+project.private.config.json
+
+# Docker
+server/.dockerignore
+
+# Debug / test scripts (temporary)
+debug-*.js
+test-*.js
+
+# WorkBuddy internal
+.workbuddy/
+overview.md

@@ -1,0 +1,93 @@
+<!-- 首页 Feed 流 -->
+<view class="page">
+  <!-- 顶部频道切换 -->
+  <view class="channel-bar">
+    <view
+      wx:for="{{channels}}"
+      wx:key="key"
+      class="channel-item {{activeChannel === item.key ? 'active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="onChannelChange"
+    >{{item.label}}</view>
+  </view>
+
+  <!-- 骨架屏：数据加载前显示 -->
+  <block wx:if="{{showSkeleton}}">
+    <view class="skeleton-card" wx:for="{{[1,2,3]}}" wx:key="*this">
+      <view class="skeleton-header">
+        <view class="skeleton-avatar"></view>
+        <view class="skeleton-info">
+          <view class="skeleton-name"></view>
+          <view class="skeleton-time"></view>
+        </view>
+      </view>
+      <view class="skeleton-content"></view>
+      <view class="skeleton-content short"></view>
+    </view>
+  </block>
+
+  <!-- 内容列表 -->
+  <block wx:else>
+    <view
+      wx:for="{{feedList}}"
+      wx:key="id"
+      class="feed-card"
+      data-id="{{item.id}}"
+      bindtap="onTapPost"
+    >
+      <!-- 用户信息行 -->
+      <view class="card-header">
+        <image class="avatar" src="{{item.author.avatarUrl}}" mode="aspectFill" lazy-load></image>
+        <view class="user-info">
+          <text class="username">{{item.author.nickName}}</text>
+          <text class="post-time">{{item.timeText}}</text>
+        </view>
+      </view>
+
+      <!-- 内容区域 -->
+      <view class="card-body">
+        <text class="content-text" wx:if="{{item.content}}">{{item.content}}</text>
+        <image
+          wx:if="{{item.images && item.images.length > 0}}"
+          class="content-image"
+          src="{{item.images[0]}}"
+          mode="aspectFill"
+          lazy-load
+        ></image>
+      </view>
+
+      <!-- 互动数据行 -->
+      <view class="card-footer">
+        <view class="action-item">
+          <text class="action-icon">{{item.liked ? '❤' : '♡'}}</text>
+          <text class="action-count">{{item.likeCountText}}</text>
+        </view>
+        <view class="action-item">
+          <text class="action-icon">💬</text>
+          <text class="action-count">{{item.commentCountText}}</text>
+        </view>
+        <view class="action-item">
+          <text class="action-icon">↗</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="loading-more" wx:if="{{loading}}">
+      <text>加载中...</text>
+    </view>
+    <view class="no-more" wx:if="{{!hasMore && feedList.length > 0}}">
+      <text>没有更多了</text>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loading && feedList.length === 0}}">
+      <text class="empty-text">还没有内容，快来发布第一条吧</text>
+    </view>
+  </block>
+
+  <!-- 发布按钮（悬浮） -->
+  <view class="fab-publish" bindtap="onTapPublish">
+    <text class="fab-icon">+</text>
+  </view>
+</view>

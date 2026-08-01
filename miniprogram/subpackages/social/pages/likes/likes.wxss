@@ -1,0 +1,101 @@
+/* 点赞列表页样式 */
+.likes-page {
+  min-height: 100vh;
+  background: #f7f7f7;
+  padding-bottom: 40rpx;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 200rpx 0;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
+  color: #FF6B35;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #ccc;
+}
+
+/* 帖子列表 */
+.post-list {
+  padding: 20rpx 30rpx;
+}
+
+.post-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+}
+
+.post-with-img {
+  display: flex;
+  align-items: flex-start;
+}
+
+.post-thumb {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  margin-right: 20rpx;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.post-text-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 160rpx;
+}
+
+.post-text-only {
+  display: flex;
+  flex-direction: column;
+}
+
+.post-content-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.5;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.post-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12rpx;
+}
+
+.post-author {
+  font-size: 22rpx;
+  color: #576B95;
+}
+
+.post-stats {
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* 加载更多 */
+.loading-more,
+.no-more {
+  text-align: center;
+  padding: 30rpx;
+  font-size: 24rpx;
+  color: #ccc;
+}

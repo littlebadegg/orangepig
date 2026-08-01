@@ -1,0 +1,52 @@
+<!-- 我的点赞列表页 -->
+<view class="likes-page">
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+    <text class="empty-icon">❤</text>
+    <text class="empty-text">还没有点赞过内容</text>
+  </view>
+
+  <!-- 列表 -->
+  <view class="post-list" wx:if="{{list.length > 0}}">
+    <view
+      class="post-card"
+      wx:for="{{list}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onTapPost"
+    >
+      <!-- 有图 -->
+      <view class="post-with-img" wx:if="{{item.firstImage}}">
+        <image
+          class="post-thumb"
+          src="{{item.firstImage}}"
+          mode="aspectFill"
+          lazy-load
+        ></image>
+        <view class="post-text-wrap">
+          <text class="post-content-text">{{item.content || '(图片内容)'}}</text>
+          <view class="post-meta">
+            <text class="post-author">{{item.author.nickName}}</text>
+            <text class="post-stats">❤ {{item.likeCountText}}</text>
+          </view>
+        </view>
+      </view>
+      <!-- 纯文字 -->
+      <view class="post-text-only" wx:else>
+        <text class="post-content-text">{{item.content}}</text>
+        <view class="post-meta">
+          <text class="post-author">{{item.author.nickName}}</text>
+          <text class="post-stats">❤ {{item.likeCountText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载更多 -->
+  <view class="loading-more" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+  <view class="no-more" wx:if="{{!loading && !hasMore && list.length > 0}}">
+    <text>没有更多了</text>
+  </view>
+</view>

@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: orangepig-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./server/.env
+    volumes:
+      - orangepig-uploads:/app/uploads
+    networks:
+      - orangepig-net
+
+  # 如果需要本地 MySQL，取消注释以下配置
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: orangepig-mysql
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root123}
+  #     MYSQL_DATABASE: ${DB_NAME:-orangepig}
+  #   ports:
+  #     - "3307:3306"
+  #   volumes:
+  #     - orangepig-mysql-data:/var/lib/mysql
+  #   networks:
+  #     - orangepig-net
+
+volumes:
+  orangepig-uploads:
+  # orangepig-mysql-data:
+
+networks:
+  orangepig-net:
+    driver: bridge
