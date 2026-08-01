@@ -86,7 +86,7 @@ Page({
   /**
    * 选择并上传照片
    * 使用 sizeType: original 保留照片 EXIF 数据（拍摄时间+GPS）
-   * 后端自动从 EXIF 提取，前端同时获取当前位置作为兜底
+   * 后端优先从 EXIF 提取拍摄位置，照片无 GPS 时才用当前位置兜底
    */
   onUploadPhoto() {
     const app = getApp()
@@ -127,8 +127,8 @@ Page({
 
   /**
    * 上传照片
-   * 流程：获取当前位置 → 上传原图 → 后端解析 EXIF → 创建照片记录
-   * 数据优先级：EXIF > 当前位置 > 无
+   * 流程：获取当前位置（兜底）→ 上传原图 → 后端解析 EXIF → 创建照片记录
+   * 位置优先级：EXIF 拍摄位置 > 当前位置兜底 > 无
    */
   async uploadPhotos(tempFiles) {
     if (!tempFiles || tempFiles.length === 0) return
@@ -146,8 +146,9 @@ Page({
 
     let successCount = 0
     let failCount = 0
-    let exifCount = 0
-    let gpsCount = 0
+    let exifLocationCount = 0 // 照片有拍摄位置
+    let gpsLocationCount = 0  // 用当前位置兜底
+    let noLocationCount = 0   // 无位置
 
     for (const file of tempFiles) {
       try {
@@ -165,10 +166,12 @@ Page({
           photoTime: null,
         })
 
-        if (result.exifUsed) {
-          exifCount++
+        if (result.source === 'exif') {
+          exifLocationCount++
         } else if (result.source === 'gps') {
-          gpsCount++
+          gpsLocationCount++
+        } else {
+          noLocationCount++
         }
         successCount++
       } catch (err) {
@@ -181,14 +184,16 @@ Page({
     this.setData({ uploading: false })
 
     if (successCount > 0) {
-      // 提示 EXIF 状态
+      // 提示位置来源
       let hint = ''
-      if (exifCount > 0) {
-        hint = `，${exifCount}张已识别拍摄信息`
-      } else if (gpsCount > 0) {
+      if (exifLocationCount > 0 && gpsLocationCount > 0) {
+        hint = `，${exifLocationCount}张有拍摄位置，${gpsLocationCount}张用当前位置`
+      } else if (exifLocationCount > 0) {
+        hint = `，${exifLocationCount}张已识别拍摄位置`
+      } else if (gpsLocationCount > 0) {
         hint = `，使用当前位置`
       } else {
-        hint = '，部分照片无拍摄信息'
+        hint = '，无拍摄位置信息'
       }
       wx.showToast({
         title: `上传${successCount}张成功${failCount > 0 ? `,${failCount}张失败` : hint}`,

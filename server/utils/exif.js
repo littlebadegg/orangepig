@@ -58,12 +58,13 @@ async function extractExif(filename) {
       console.log(`[EXIF] ✅ 地址: ${location}`)
     }
 
-    const hasExif = photoTime !== null || latitude !== null
-    return { photoTime, latitude, longitude, location, exifUsed: hasExif }
+    const hasGps = latitude !== null
+    const hasExif = photoTime !== null || hasGps
+    return { photoTime, latitude, longitude, location, exifUsed: hasExif, hasGps }
   } catch (err) {
     // PNG、GIF、WebP 等格式没有 EXIF，或解析失败 — 不阻塞流程
     console.warn(`[EXIF] 解析失败 (${filename}):`, err.message)
-    return { photoTime: null, latitude: null, longitude: null, location: '', exifUsed: false }
+    return { photoTime: null, latitude: null, longitude: null, location: '', exifUsed: false, hasGps: false }
   }
 }
 

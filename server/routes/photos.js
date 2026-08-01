@@ -203,9 +203,10 @@ router.get('/:id', async (req, res, next) => {
  * body: { imageUrl, title, location, latitude, longitude, photoTime }
  *
  * 数据优先级：
- * 1. EXIF（从图片文件解析，最准确）
- * 2. 前端传入的 location/latitude/longitude（wx.getLocation 兜底）
- * 3. 默认值（当前时间、空地点）
+ * 时间：EXIF 拍摄时间 > 前端传入 > 当前时间
+ * 位置：EXIF GPS（照片拍摄位置）> wx.getLocation（当前位置兜底）> 无
+ *
+ * 即：优先用照片自身的拍摄信息，照片没有位置时才用上传时的当前位置
  */
 router.post('/', auth, async (req, res, next) => {
   try {
@@ -218,7 +219,7 @@ router.post('/', auth, async (req, res, next) => {
     console.log(`[Photos] 创建照片: imageUrl=${imageUrl}, 前端传入: lat=${latitude}, lng=${longitude}, loc=${location}, time=${photoTime}`)
 
     // 从 imageUrl 中提取文件名，读取上传的图片文件解析 EXIF
-    let exifData = { photoTime: null, latitude: null, longitude: null, location: '', exifUsed: false }
+    let exifData = { photoTime: null, latitude: null, longitude: null, location: '', exifUsed: false, hasGps: false }
     try {
       const filename = imageUrl.split('/uploads/').pop()
       if (filename) {
@@ -228,18 +229,24 @@ router.post('/', auth, async (req, res, next) => {
       console.warn('[Photos] EXIF 提取失败，使用请求参数:', e.message)
     }
 
-    // EXIF 数据优先，回退到前端传入的值，最后回退到默认值
+    // 数据优先级：
+    // 时间：EXIF 拍摄时间 > 前端传入 > 当前时间
+    // 位置：EXIF GPS（拍摄位置）> 前端 wx.getLocation（当前位置兜底）> 无
     const finalPhotoTime = exifData.photoTime || photoTime || new Date()
-    const finalLatitude = exifData.latitude !== null ? exifData.latitude : (latitude || null)
-    const finalLongitude = exifData.longitude !== null ? exifData.longitude : (longitude || null)
+    const finalLatitude = exifData.hasGps ? exifData.latitude : (latitude || null)
+    const finalLongitude = exifData.hasGps ? exifData.longitude : (longitude || null)
 
-    // 地点：EXIF 地址 > 前端传入的地址 > 逆地理编码（前端传入的坐标）
-    let finalLocation = exifData.location || location || ''
+    // 地址：EXIF 地址（拍摄位置逆地理编码）> 前端坐标逆地理编码（当前位置兜底）
+    let finalLocation = exifData.location || ''
     if (!finalLocation && finalLatitude !== null && finalLongitude !== null) {
-      // 前端传入了坐标但没有地址，做一次逆地理编码
       finalLocation = await reverseGeocode(finalLatitude, finalLongitude)
     }
 
+    // 判断数据来源
+    const locationSource = exifData.hasGps ? 'exif' : (latitude ? 'gps' : 'none')
+    const timeSource = exifData.photoTime ? 'exif' : (photoTime ? 'manual' : 'default')
+
+    console.log(`[Photos] 来源: time=${timeSource}, location=${locationSource}`)
     console.log(`[Photos] 最终值: time=${finalPhotoTime}, lat=${finalLatitude}, lng=${finalLongitude}, loc=${finalLocation}`)
 
     const photo = await Photo.create({
@@ -262,7 +269,8 @@ router.post('/', auth, async (req, res, next) => {
       longitude: photo.longitude,
       photoTime: photo.photoTime,
       exifUsed: exifData.exifUsed,
-      source: exifData.exifUsed ? 'exif' : (latitude ? 'gps' : 'none'),
+      source: locationSource,
+      timeSource,
       createTime: photo.createTime,
     })
   } catch (err) {
