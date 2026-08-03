@@ -10,7 +10,7 @@ services:
     env_file:
       - ./server/.env
     volumes:
-      - orangepig-uploads:/app/uploads
+      - ./server/uploads:/app/uploads
     networks:
       - orangepig-net
 
@@ -28,10 +28,6 @@ services:
   #     - orangepig-mysql-data:/var/lib/mysql
   #   networks:
   #     - orangepig-net
-
-volumes:
-  orangepig-uploads:
-  # orangepig-mysql-data:
 
 networks:
   orangepig-net:
