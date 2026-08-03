@@ -7,8 +7,20 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-    env_file:
-      - ./server/.env
+    environment:
+      - PORT=3000
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-orangepig}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - WX_APPID=${WX_APPID}
+      - WX_SECRET=${WX_SECRET}
+      - UPLOAD_DIR=uploads
+      - STATIC_BASE_URL=${STATIC_BASE_URL:-http://localhost:3000}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-15728640}
     volumes:
       - ./server/uploads:/app/uploads
     networks:
@@ -20,7 +32,7 @@ services:
   #   container_name: orangepig-mysql
   #   restart: unless-stopped
   #   environment:
-  #     MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root123}
+  #     MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
   #     MYSQL_DATABASE: ${DB_NAME:-orangepig}
   #   ports:
   #     - "3307:3306"
