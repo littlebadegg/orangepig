@@ -55,6 +55,45 @@ app.get('/api/health', (req, res) => {
   res.apiSuccess({ status: 'ok', timestamp: Date.now() })
 })
 
+// 首页 — 服务状态页
+app.get('/', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>橙猪 API</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #fff; border-radius: 16px; padding: 48px 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); text-align: center; max-width: 400px; width: 90%; }
+    .logo { font-size: 48px; margin-bottom: 16px; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .status { display: inline-flex; align-items: center; gap: 6px; background: #e8f5e9; color: #2e7d32; padding: 6px 16px; border-radius: 20px; font-size: 14px; margin: 16px 0 24px; }
+    .dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .links { display: flex; flex-direction: column; gap: 8px; }
+    .links a { color: #1976d2; text-decoration: none; padding: 10px; border-radius: 8px; background: #f5f5f5; transition: background 0.2s; font-size: 14px; }
+    .links a:hover { background: #e3f2fd; }
+    .footer { margin-top: 24px; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🐷</div>
+    <h1>橙猪 API 服务</h1>
+    <div class="status"><span class="dot"></span> 运行中</div>
+    <div class="links">
+      <a href="/api/health">健康检查 /api/health</a>
+      <a href="/api/posts">内容列表 /api/posts</a>
+      <a href="/api/photos/album">相册 /api/photos/album</a>
+    </div>
+    <div class="footer">橙猪小程序后端 · ${new Date().getFullYear()}</div>
+  </div>
+</body>
+</html>`)
+})
+
 // 404
 app.use(notFound)
 

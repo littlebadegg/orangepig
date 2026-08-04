@@ -1,12 +1,9 @@
 # ===== HTTP 配置 =====
-# 直接监听 80 端口，也可作为 HTTPS 的重定向跳板
+# DOMAIN 变量由 docker-compose.yml 通过 envsubst 注入
 
 server {
     listen 80;
-    server_name _;
-
-    # 如果配置了 HTTPS，取消下面注释将 HTTP 自动跳转到 HTTPS
-    # return 301 https://$host$request_uri;
+    server_name ${DOMAIN} _;
 
     # --- API 反向代理 ---
     location /api/ {
@@ -28,14 +25,11 @@ server {
     }
 
     # --- 静态文件（上传的图片）---
-    # Nginx 直接服务静态文件，不走 Node.js，性能更好
     location /uploads/ {
         alias /app/uploads/;
         expires 30d;
         add_header Cache-Control "public, immutable";
         access_log off;
-
-        # CORS 头（小程序图片显示需要）
         add_header Access-Control-Allow-Origin *;
     }
 
@@ -45,24 +39,25 @@ server {
         access_log off;
     }
 
-    # --- 根路径 ---
+    # --- 根路径：访问域名直接看到服务端首页 ---
     location / {
         proxy_pass http://server:3000;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 
 # ===== HTTPS 配置（可选）=====
-# 部署 HTTPS 时：
-# 1. 将 SSL 证书放到 nginx/ssl/ 目录（fullchain.pem + privkey.pem）
-# 2. 把 DOMAIN 改成你的域名
-# 3. 取消下面注释
+# 1. 将证书放到 nginx/ssl/（fullchain.pem + privkey.pem）
+# 2. 把下面的注释取消
+# 3. 在 HTTP server 块中取消 return 301 https://... 的注释
 
 # server {
 #     listen 443 ssl;
-#     server_name your-domain.com;
+#     server_name ${DOMAIN};
 #
 #     ssl_certificate     /etc/nginx/ssl/fullchain.pem;
 #     ssl_certificate_key /etc/nginx/ssl/privkey.pem;
@@ -96,8 +91,10 @@ server {
 #
 #     location / {
 #         proxy_pass http://server:3000;
+#         proxy_http_version 1.1;
 #         proxy_set_header Host $host;
 #         proxy_set_header X-Real-IP $remote_addr;
 #         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
 #     }
 # }
