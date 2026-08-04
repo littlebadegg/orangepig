@@ -33,9 +33,10 @@ services:
     image: nginx:alpine
     container_name: orangepig-nginx
     restart: unless-stopped
+    # 不占用 80 端口（被 Rancher 占用），改用 NGINX_PORT（默认 8080）
+    # Rancher Ingress 负责处理 80/443，转发到本端口
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_PORT:-8080}:80"
     environment:
       - DOMAIN=${DOMAIN:-localhost}
     volumes:
