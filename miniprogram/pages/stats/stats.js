@@ -3,7 +3,7 @@
  */
 const babyService = require('../../services/baby')
 const recordService = require('../../services/record')
-const { todayString, genderText } = require('../../utils/format')
+const { todayString, genderText, normalizeStats } = require('../../utils/format')
 
 Page({
   data: {
@@ -55,7 +55,7 @@ Page({
         barWidth: Math.max(4, Math.round(((item.totalAmount || 0) / maxAmount) * 100)),
       }))
 
-      this.setData({ stats, trend })
+      this.setData({ stats: normalizeStats(stats), trend })
     } catch (err) {
       console.error('[stats] 加载失败:', err)
       wx.showToast({ title: err.message || '加载失败', icon: 'none' })

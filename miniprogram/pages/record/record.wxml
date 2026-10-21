@@ -66,29 +66,29 @@
   <view class="card">
     <view class="card-title">一键记录</view>
     <view class="actions">
-      <view class="action action-feed" bindtap="openFeeding">
+      <view class="action action-feed" hover-class="action-hover" bindtap="openFeeding">
         <text class="action-icon">🍼</text>
         <text class="action-label">喂奶</text>
       </view>
-      <view class="action action-diaper" bindtap="openDiaper">
+      <view class="action action-diaper" hover-class="action-hover" bindtap="openDiaper">
         <text class="action-icon">🧷</text>
         <text class="action-label">换尿片</text>
       </view>
-      <view class="action action-sleep {{ongoing ? 'action-active' : ''}}" bindtap="onSleepTap">
+      <view class="action action-sleep {{ongoing ? 'action-active' : ''}}" hover-class="action-hover" bindtap="onSleepTap">
         <text class="action-icon">{{ongoing ? '🌞' : '😴'}}</text>
         <text class="action-label">{{ongoing ? '起床' : '睡觉'}}</text>
       </view>
     </view>
     <view class="actions actions-more">
-      <view class="action action-exercise" bindtap="openExercise">
+      <view class="action action-exercise" hover-class="action-hover" bindtap="openExercise">
         <text class="action-icon">🤸</text>
         <text class="action-label">排气操</text>
       </view>
-      <view class="action action-growth" bindtap="openGrowth">
+      <view class="action action-growth" hover-class="action-hover" bindtap="openGrowth">
         <text class="action-icon">📏</text>
         <text class="action-label">身高体重</text>
       </view>
-      <view class="action action-temp" bindtap="openTemperature">
+      <view class="action action-temp" hover-class="action-hover" bindtap="openTemperature">
         <text class="action-icon">🌡️</text>
         <text class="action-label">体温</text>
       </view>

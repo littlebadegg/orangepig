@@ -3,7 +3,7 @@
  */
 const babyService = require('../../services/baby')
 const recordService = require('../../services/record')
-const { nowString, todayString, formatDuration, genderText } = require('../../utils/format')
+const { nowString, todayString, formatDuration, genderText, normalizeStats } = require('../../utils/format')
 
 // 快捷选项
 const AMOUNT_PRESETS = [60, 90, 120, 150, 180, 210]
@@ -148,7 +148,7 @@ Page({
       this.setData({
         list,
         ongoing: timeline.ongoing || null,
-        stats,
+        stats: normalizeStats(stats),
       })
       this.updateElapsed()
     } catch (err) {
@@ -327,6 +327,7 @@ Page({
   // ============ 排气操 ============
 
   openExercise() {
+    console.log('[record] openExercise →', this.data.currentBabyId)
     if (!this.checkBaby()) return
     this.setData({
       showExercise: true,
@@ -368,6 +369,7 @@ Page({
       wx.showToast({ title: `已记录 ${exerciseDuration}分钟`, icon: 'none' })
       await this.loadRecords()
     } catch (err) {
+      console.error('[record] submitExercise 失败:', err)
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })
@@ -377,6 +379,7 @@ Page({
   // ============ 身高体重 ============
 
   openGrowth() {
+    console.log('[record] openGrowth →', this.data.currentBabyId)
     if (!this.checkBaby()) return
     const { stats } = this.data
     const g = stats && stats.growth ? stats.growth : null
@@ -437,6 +440,7 @@ Page({
       wx.showToast({ title: `已记录 ${parts.join(' · ')}`, icon: 'none' })
       await this.loadRecords()
     } catch (err) {
+      console.error('[record] submitGrowth 失败:', err)
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })
@@ -446,6 +450,7 @@ Page({
   // ============ 体温 ============
 
   openTemperature() {
+    console.log('[record] openTemperature →', this.data.currentBabyId)
     if (!this.checkBaby()) return
     this.setData({
       showTemperature: true,
@@ -496,6 +501,7 @@ Page({
       })
       await this.loadRecords()
     } catch (err) {
+      console.error('[record] submitTemperature 失败:', err)
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })

@@ -42,6 +42,24 @@ function composeDateTime(dateStr, timeStr) {
   return `${dateStr} ${timeStr}:00`
 }
 
+/**
+ * 统计兜底：保证 WXML 用到的二级对象一定存在
+ * 后端版本较旧（还没返回 exercise / growth / temperature）时，
+ * WXML 里 stats.exercise.count 会抛错并中断整页渲染，
+ * 表现为「按钮点了没反应」，所以统一在这里补齐。
+ */
+function normalizeStats(stats) {
+  const s = stats && typeof stats === 'object' ? stats : {}
+  return {
+    feeding: s.feeding || {},
+    diaper: s.diaper || {},
+    sleep: s.sleep || {},
+    exercise: s.exercise || {},
+    temperature: s.temperature || {},
+    growth: s.growth || {},
+  }
+}
+
 /** 性别文案 */
 function genderText(gender) {
   if (gender === 1) return '男宝'
@@ -56,5 +74,6 @@ module.exports = {
   todayString,
   timePickerValue,
   composeDateTime,
+  normalizeStats,
   genderText,
 }
