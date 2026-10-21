@@ -41,6 +41,25 @@
     <view class="last-tip" wx:if="{{stats.feeding.lastFeeding}}">
       上次喂养 {{stats.feeding.lastFeeding.timeText}} · {{stats.feeding.lastFeeding.agoText}} · {{stats.feeding.lastFeeding.title}}
     </view>
+
+    <!-- 第二行：排气操 / 体温 / 身高体重 -->
+    <view class="overview overview-sub" wx:if="{{stats && (stats.exercise.count || stats.temperature.count || stats.growth.hasData)}}">
+      <view class="ov-item">
+        <view class="row">
+          <text class="text-num">{{stats.exercise.count}}</text>
+          <text class="text-unit">次</text>
+        </view>
+        <text class="ov-label">🤸 {{stats.exercise.minutesText || '—'}}</text>
+      </view>
+      <view class="ov-item">
+        <text class="text-num text-sm">{{stats.temperature.latestText || '—'}}</text>
+        <text class="ov-label">🌡️ {{stats.temperature.levelText}}</text>
+      </view>
+      <view class="ov-item">
+        <text class="text-num text-sm">{{stats.growth.weightText || '—'}}</text>
+        <text class="ov-label">📏 {{stats.growth.heightText || '未记录'}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- ===== 一键记录 ===== -->
@@ -58,6 +77,20 @@
       <view class="action action-sleep {{ongoing ? 'action-active' : ''}}" bindtap="onSleepTap">
         <text class="action-icon">{{ongoing ? '🌞' : '😴'}}</text>
         <text class="action-label">{{ongoing ? '起床' : '睡觉'}}</text>
+      </view>
+    </view>
+    <view class="actions actions-more">
+      <view class="action action-exercise" bindtap="openExercise">
+        <text class="action-icon">🤸</text>
+        <text class="action-label">排气操</text>
+      </view>
+      <view class="action action-growth" bindtap="openGrowth">
+        <text class="action-icon">📏</text>
+        <text class="action-label">身高体重</text>
+      </view>
+      <view class="action action-temp" bindtap="openTemperature">
+        <text class="action-icon">🌡️</text>
+        <text class="action-label">体温</text>
       </view>
     </view>
     <view class="sleeping-tip" wx:if="{{ongoing}}">
@@ -150,6 +183,79 @@
     </picker>
 
     <view class="btn btn-primary btn-block sheet-btn" bindtap="submitDiaper">确定记录</view>
+  </view>
+
+  <!-- ===== 排气操弹窗 ===== -->
+  <view class="mask" wx:if="{{showExercise}}" bindtap="closeExercise"></view>
+  <view class="sheet" wx:if="{{showExercise}}">
+    <view class="sheet-title">记录排气操</view>
+    <view class="sheet-close" bindtap="closeExercise">✕</view>
+
+    <view class="sheet-label">做了多久（分钟）</view>
+    <view class="chips">
+      <view class="chip {{exerciseDuration === item ? 'chip-active' : ''}}" wx:for="{{exercisePresets}}" wx:key="*this" data-value="{{item}}" bindtap="setExerciseDuration">{{item}}</view>
+    </view>
+
+    <view class="sheet-label">有排气 / 打嗝吗</view>
+    <view class="seg">
+      <view class="seg-item {{exerciseResult === 1 ? 'seg-active' : ''}}" data-value="1" bindtap="setExerciseResult">有</view>
+      <view class="seg-item {{exerciseResult === 2 ? 'seg-active' : ''}}" data-value="2" bindtap="setExerciseResult">没有</view>
+      <view class="seg-item {{exerciseResult === 0 ? 'seg-active' : ''}}" data-value="0" bindtap="setExerciseResult">不记</view>
+    </view>
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitExercise">确定记录</view>
+  </view>
+
+  <!-- ===== 身高体重弹窗 ===== -->
+  <view class="mask" wx:if="{{showGrowth}}" bindtap="closeGrowth"></view>
+  <view class="sheet" wx:if="{{showGrowth}}">
+    <view class="sheet-title">记录身高体重</view>
+    <view class="sheet-close" bindtap="closeGrowth">✕</view>
+
+    <view class="sheet-tip">两个都填或只填一个都可以</view>
+
+    <view class="sheet-label">身高（cm）</view>
+    <input class="input" type="digit" placeholder="例如 64.0" value="{{height}}" bindinput="onHeightInput" />
+
+    <view class="sheet-label">体重（kg）</view>
+    <input class="input" type="digit" placeholder="例如 7.2" value="{{weight}}" bindinput="onWeightInput" />
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitGrowth">确定记录</view>
+  </view>
+
+  <!-- ===== 体温弹窗 ===== -->
+  <view class="mask" wx:if="{{showTemperature}}" bindtap="closeTemperature"></view>
+  <view class="sheet" wx:if="{{showTemperature}}">
+    <view class="sheet-title">记录体温</view>
+    <view class="sheet-close" bindtap="closeTemperature">✕</view>
+
+    <view class="sheet-label">体温（℃）</view>
+    <view class="chips">
+      <view class="chip {{temperature === item && !customTemperature ? 'chip-active' : ''}}" wx:for="{{tempPresets}}" wx:key="*this" data-value="{{item}}" bindtap="setTemperature">{{item}}</view>
+    </view>
+    <input class="input" type="digit" placeholder="或输入精确体温，例如 36.9" value="{{customTemperature}}" bindinput="onTempInput" />
+
+    <view class="sheet-label">测量方式</view>
+    <view class="seg">
+      <view class="seg-item {{tempMethod === item.value ? 'seg-active' : ''}}" wx:for="{{tempMethods}}" wx:key="value" data-value="{{item.value}}" bindtap="setTempMethod">{{item.label}}</view>
+    </view>
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitTemperature">确定记录</view>
   </view>
 
 </view>

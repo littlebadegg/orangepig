@@ -28,6 +28,21 @@ function addSleep(data) {
   return post('/records/sleep', data)
 }
 
+/** 记一次排气操 { babyId, duration, result, time, note } */
+function addExercise(data) {
+  return post('/records/exercise', data)
+}
+
+/** 记一次身高/体重 { babyId, height, weight, time, note } */
+function addGrowth(data) {
+  return post('/records/growth', data)
+}
+
+/** 记一次体温 { babyId, temperature, method, time, note } */
+function addTemperature(data) {
+  return post('/records/temperature', data)
+}
+
 /** 某天时间线 */
 function timeline(babyId, date) {
   return get('/records/timeline', { babyId, date })
@@ -54,6 +69,9 @@ module.exports = {
   startSleep,
   endSleep,
   addSleep,
+  addExercise,
+  addGrowth,
+  addTemperature,
   timeline,
   remove,
   dailyStats,

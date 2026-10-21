@@ -18,6 +18,9 @@ const {
   FeedingRecord,
   DiaperRecord,
   SleepRecord,
+  ExerciseRecord,
+  GrowthRecord,
+  TemperatureRecord,
 } = require('../models')
 
 /** 连接 MySQL 实例（不指定库名）创建数据库 */
@@ -109,6 +112,37 @@ async function seed() {
       endTime: at(14, 30),
       duration: 90,
       recordStatus: 1,
+    },
+  ])
+
+  await ExerciseRecord.bulkCreate([
+    { babyId: baby.id, userId: user.id, duration: 5, result: 1, time: at(9, 0) },
+    { babyId: baby.id, userId: user.id, duration: 10, result: 1, time: at(16, 10) },
+  ])
+
+  await TemperatureRecord.bulkCreate([
+    { babyId: baby.id, userId: user.id, temperature: 36.8, method: 'ear', time: at(7, 30) },
+    { babyId: baby.id, userId: user.id, temperature: 37.0, method: 'ear', time: at(19, 0) },
+  ])
+
+  // 身高体重测得少，给两条不同日期的，方便看「最近一次」
+  const daysAgo = (n) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() - n, 10, 0, 0)
+
+  await GrowthRecord.bulkCreate([
+    {
+      babyId: baby.id,
+      userId: user.id,
+      height: 62.5,
+      weight: 6.8,
+      time: daysAgo(15),
+    },
+    {
+      babyId: baby.id,
+      userId: user.id,
+      height: 64.0,
+      weight: 7.2,
+      time: at(10, 0),
     },
   ])
 

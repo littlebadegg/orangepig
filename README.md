@@ -1,14 +1,14 @@
 # 🍼 橙猪宝宝记
 
-宝宝喂养记录小程序 —— 一键记录喂奶、换尿片、睡觉，自动生成每日统计与趋势。
+宝宝喂养记录小程序 —— 一键记录喂奶、换尿片、睡觉、排气操、身高体重、体温，自动生成每日统计与趋势。
 
 ## 功能
 
 | 模块 | 说明 |
 |------|------|
-| **一键记录** | 三个大按钮：喂奶（奶粉记毫升 / 母乳记时长）、换尿片（小便 / 大便 / 都有）、睡觉（点一下开始，再点一下起床，自动算时长） |
-| **今日时间线** | 按时间倒序列出今天所有记录，支持左滑删除 |
-| **统计** | 今日总奶量、喂养次数、大小便次数、睡眠总时长 + 近 7 天奶量柱状趋势 |
+| **一键记录** | 六个大按钮：喂奶（奶粉记毫升 / 母乳记时长）、换尿片（小便 / 大便 / 都有）、睡觉（点一下开始，再点一下起床，自动算时长）、排气操（时长 + 有没有排气）、身高体重（可只填一项）、体温（耳温 / 额温 / 腋温，自动判发烧） |
+| **今日时间线** | 按时间倒序列出今天所有记录，支持删除 |
+| **统计** | 今日总奶量、喂养次数、大小便次数、睡眠总时长、排气操次数与时长、最新体温（分级提示）、最近身高体重 + 近 7 天奶量柱状趋势 |
 | **多宝宝** | 支持添加多个宝宝，随时切换 |
 | **补录** | 记录时默认当前时间，可改成任意时间补记 |
 
@@ -32,13 +32,14 @@
 │   ├── app.js
 │   ├── init-db.js              # 手动初始化（一般不用，启动会自动建表）
 │   ├── config/index.js
-│   ├── models/index.js         # User / Baby / FeedingRecord / DiaperRecord / SleepRecord
+│   ├── models/index.js         # User / Baby / Feeding / Diaper / Sleep / Exercise / Growth / Temperature
 │   ├── routes/
 │   │   ├── auth.js             # 微信登录、用户资料
 │   │   ├── babies.js           # 宝宝 CRUD、切换
-│   │   ├── records.js          # 喂养 / 尿片 / 睡眠 / 时间线
+│   │   ├── records.js          # 喂养 / 尿片 / 睡眠 / 排气操 / 身高体重 / 体温 / 时间线
 │   │   └── stats.js            # 每日统计、趋势
 │   ├── utils/
+│   │   ├── baby.js             # 宝宝解析（参数 → 当前选中 → 第一个）
 │   │   ├── db-init.js          # 启动自动建表 + 演示数据
 │   │   ├── time.js             # 东八区时间处理
 │   │   └── wechat.js           # code2session、内容安全
@@ -116,8 +117,12 @@ POST   /api/records/diaper          记尿片 { babyId, type: pee|poo|both, time
 POST   /api/records/sleep/start     开始睡觉 { babyId }
 POST   /api/records/sleep/end       起床     { babyId, id }
 POST   /api/records/sleep           补录一段 { babyId, startTime, endTime }
+POST   /api/records/exercise        记排气操 { babyId, duration, result, time }
+POST   /api/records/growth          记身高体重 { babyId, height, weight, time }
+POST   /api/records/temperature     记体温 { babyId, temperature, method, time }
 GET    /api/records/timeline        时间线   ?babyId=&date=
-DELETE /api/records/:type/:id       删除记录  type: feeding|diaper|sleep
+DELETE /api/records/:type/:id       删除记录
+                                    type: feeding|diaper|sleep|exercise|growth|temperature
 
 GET    /api/stats/daily             今日概览 ?babyId=&date=
 GET    /api/stats/trend             近 N 天  ?babyId=&days=7

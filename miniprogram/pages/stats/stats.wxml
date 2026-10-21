@@ -45,9 +45,51 @@
       <text class="stat-value">{{stats.sleep.totalText}}</text>
     </view>
 
+    <view class="divider"></view>
+
+    <view class="stat-row">
+      <text class="stat-icon">🤸</text>
+      <view class="col stat-main">
+        <text class="stat-label">排气操</text>
+        <text class="stat-sub">
+          {{stats.exercise.count > 0 ? '共 ' + stats.exercise.minutesText + (stats.exercise.lastText ? ' · 上次 ' + stats.exercise.lastText : '') : '今天还没做'}}
+        </text>
+      </view>
+      <text class="stat-value">{{stats.exercise.count}} 次</text>
+    </view>
+
+    <view class="divider"></view>
+
+    <view class="stat-row">
+      <text class="stat-icon">{{stats.temperature.isFever ? '🤒' : '🌡️'}}</text>
+      <view class="col stat-main">
+        <text class="stat-label">体温</text>
+        <text class="stat-sub">
+          {{stats.temperature.count > 0 ? '今日 ' + stats.temperature.count + ' 次 · ' + stats.temperature.levelText + (stats.temperature.timeText ? ' · 最近 ' + stats.temperature.timeText : '') : '今天还没测'}}
+        </text>
+      </view>
+      <text class="stat-value {{stats.temperature.isFever ? 'stat-value-warn' : ''}}">{{stats.temperature.latestText || '—'}}</text>
+    </view>
+
     <view class="avg-tip" wx:if="{{stats.feeding.formulaCount > 0}}">
       平均每餐 {{stats.feeding.avgAmount}}ml
     </view>
+  </view>
+
+  <!-- ===== 身高体重 ===== -->
+  <view class="card" wx:if="{{stats && stats.growth.hasData}}">
+    <view class="card-title">最近一次测量</view>
+    <view class="growth-row">
+      <view class="growth-item">
+        <text class="growth-value">{{stats.growth.heightText || '—'}}</text>
+        <text class="growth-label">📏 身高</text>
+      </view>
+      <view class="growth-item">
+        <text class="growth-value">{{stats.growth.weightText || '—'}}</text>
+        <text class="growth-label">⚖️ 体重</text>
+      </view>
+    </view>
+    <view class="avg-tip" wx:if="{{stats.growth.measuredText}}">测量于 {{stats.growth.measuredText}}</view>
   </view>
 
   <!-- ===== 近 N 天奶量 ===== -->

@@ -8,6 +8,24 @@ const { nowString, todayString, formatDuration, genderText } = require('../../ut
 // 快捷选项
 const AMOUNT_PRESETS = [60, 90, 120, 150, 180, 210]
 const DURATION_PRESETS = [10, 15, 20, 30]
+// 排气操时长（分钟）
+const EXERCISE_PRESETS = [3, 5, 10, 15]
+// 体温快捷值（℃）
+const TEMP_PRESETS = [36.5, 37.0, 37.5, 38.0]
+// 体温测量方式
+const TEMP_METHODS = [
+  { value: 'ear', label: '耳温' },
+  { value: 'forehead', label: '额温' },
+  { value: 'armpit', label: '腋温' },
+]
+// 发烧阈值（与后端一致）
+const FEVER_THRESHOLD = 37.3
+
+/** 当前时间的 HH:mm */
+function currentHM() {
+  const now = new Date()
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+}
 
 Page({
   data: {
@@ -35,8 +53,27 @@ Page({
     showDiaper: false,
     diaperType: 'pee', // pee 小便 | poo 大便 | both 都有
 
+    // 排气操弹窗
+    showExercise: false,
+    exerciseDuration: 5,
+    exerciseResult: 0, // 0 不记 | 1 有排气 | 2 没排气
+
+    // 身高体重弹窗
+    showGrowth: false,
+    height: '',
+    weight: '',
+
+    // 体温弹窗
+    showTemperature: false,
+    temperature: 36.8,
+    customTemperature: '',
+    tempMethod: 'ear',
+
     amountPresets: AMOUNT_PRESETS,
     durationPresets: DURATION_PRESETS,
+    exercisePresets: EXERCISE_PRESETS,
+    tempPresets: TEMP_PRESETS,
+    tempMethods: TEMP_METHODS,
     loading: true,
     submitting: false,
   },
@@ -44,10 +81,7 @@ Page({
   timer: null,
 
   onLoad() {
-    const now = new Date()
-    this.setData({
-      timeValue: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-    })
+    this.setData({ timeValue: currentHM() })
   },
 
   onShow() {
@@ -181,13 +215,12 @@ Page({
 
   openFeeding() {
     if (!this.checkBaby()) return
-    const now = new Date()
     this.setData({
       showFeeding: true,
       customAmount: '',
       amount: 120,
       duration: 20,
-      timeValue: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+      timeValue: currentHM(),
     })
   },
 
@@ -255,11 +288,10 @@ Page({
 
   openDiaper() {
     if (!this.checkBaby()) return
-    const now = new Date()
     this.setData({
       showDiaper: true,
       diaperType: 'pee',
-      timeValue: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+      timeValue: currentHM(),
     })
   },
 
@@ -284,6 +316,184 @@ Page({
       })
       this.setData({ showDiaper: false })
       wx.showToast({ title: `已记录${labelMap[diaperType]}`, icon: 'none' })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  // ============ 排气操 ============
+
+  openExercise() {
+    if (!this.checkBaby()) return
+    this.setData({
+      showExercise: true,
+      exerciseDuration: 5,
+      exerciseResult: 0,
+      timeValue: currentHM(),
+    })
+  },
+
+  closeExercise() {
+    this.setData({ showExercise: false })
+  },
+
+  setExerciseDuration(e) {
+    this.setData({ exerciseDuration: parseInt(e.currentTarget.dataset.value) })
+  },
+
+  setExerciseResult(e) {
+    this.setData({ exerciseResult: parseInt(e.currentTarget.dataset.value) })
+  },
+
+  async submitExercise() {
+    const { exerciseDuration, exerciseResult, timeValue, currentBabyId } = this.data
+
+    if (!exerciseDuration || exerciseDuration <= 0) {
+      wx.showToast({ title: '请选择做操时长', icon: 'none' })
+      return
+    }
+
+    this.setData({ submitting: true })
+    try {
+      await recordService.addExercise({
+        babyId: currentBabyId,
+        duration: exerciseDuration,
+        result: exerciseResult,
+        time: `${todayString()} ${timeValue}:00`,
+      })
+      this.setData({ showExercise: false })
+      wx.showToast({ title: `已记录 ${exerciseDuration}分钟`, icon: 'none' })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  // ============ 身高体重 ============
+
+  openGrowth() {
+    if (!this.checkBaby()) return
+    const { stats } = this.data
+    const g = stats && stats.growth ? stats.growth : null
+
+    this.setData({
+      showGrowth: true,
+      // 带出上次数值，方便对比着微调
+      height: g && g.height !== null && g.height !== undefined ? String(g.height) : '',
+      weight: g && g.weight !== null && g.weight !== undefined ? String(g.weight) : '',
+      timeValue: currentHM(),
+    })
+  },
+
+  closeGrowth() {
+    this.setData({ showGrowth: false })
+  },
+
+  onHeightInput(e) {
+    this.setData({ height: e.detail.value })
+  },
+
+  onWeightInput(e) {
+    this.setData({ weight: e.detail.value })
+  },
+
+  async submitGrowth() {
+    const { height, weight, timeValue, currentBabyId } = this.data
+
+    const h = height === '' ? null : parseFloat(height)
+    const w = weight === '' ? null : parseFloat(weight)
+
+    if (h === null && w === null) {
+      wx.showToast({ title: '请至少填写身高或体重', icon: 'none' })
+      return
+    }
+    if (h !== null && (isNaN(h) || h <= 0 || h > 120)) {
+      wx.showToast({ title: '身高请填 1~120 cm', icon: 'none' })
+      return
+    }
+    if (w !== null && (isNaN(w) || w <= 0 || w > 30)) {
+      wx.showToast({ title: '体重请填 0.5~30 kg', icon: 'none' })
+      return
+    }
+
+    this.setData({ submitting: true })
+    try {
+      await recordService.addGrowth({
+        babyId: currentBabyId,
+        height: h,
+        weight: w,
+        time: `${todayString()} ${timeValue}:00`,
+      })
+      this.setData({ showGrowth: false })
+
+      const parts = []
+      if (h !== null) parts.push(`${h}cm`)
+      if (w !== null) parts.push(`${w}kg`)
+      wx.showToast({ title: `已记录 ${parts.join(' · ')}`, icon: 'none' })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  // ============ 体温 ============
+
+  openTemperature() {
+    if (!this.checkBaby()) return
+    this.setData({
+      showTemperature: true,
+      temperature: 36.8,
+      customTemperature: '',
+      tempMethod: 'ear',
+      timeValue: currentHM(),
+    })
+  },
+
+  closeTemperature() {
+    this.setData({ showTemperature: false })
+  },
+
+  setTemperature(e) {
+    this.setData({ temperature: parseFloat(e.currentTarget.dataset.value), customTemperature: '' })
+  },
+
+  onTempInput(e) {
+    this.setData({ customTemperature: e.detail.value })
+  },
+
+  setTempMethod(e) {
+    this.setData({ tempMethod: e.currentTarget.dataset.value })
+  },
+
+  async submitTemperature() {
+    const { temperature, customTemperature, tempMethod, timeValue, currentBabyId } = this.data
+
+    const t = customTemperature ? parseFloat(customTemperature) : temperature
+    if (isNaN(t) || t < 35 || t > 43) {
+      wx.showToast({ title: '体温请填 35~43 ℃', icon: 'none' })
+      return
+    }
+
+    this.setData({ submitting: true })
+    try {
+      await recordService.addTemperature({
+        babyId: currentBabyId,
+        temperature: t,
+        method: tempMethod,
+        time: `${todayString()} ${timeValue}:00`,
+      })
+      this.setData({ showTemperature: false })
+      wx.showToast({
+        title: t >= FEVER_THRESHOLD ? `已记录 ${t}℃ · 偏高` : `已记录 ${t}℃`,
+        icon: 'none',
+      })
       await this.loadRecords()
     } catch (err) {
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })

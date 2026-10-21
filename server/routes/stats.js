@@ -9,7 +9,14 @@ const { Op } = require('sequelize')
 const router = express.Router()
 
 const { auth } = require('../middleware/auth')
-const { FeedingRecord, DiaperRecord, SleepRecord } = require('../models')
+const {
+  FeedingRecord,
+  DiaperRecord,
+  SleepRecord,
+  ExerciseRecord,
+  GrowthRecord,
+  TemperatureRecord,
+} = require('../models')
 const {
   formatDate,
   formatTime,
@@ -22,6 +29,34 @@ const {
 } = require('../utils/time')
 
 const { resolveBaby } = require('../utils/baby')
+
+/**
+ * MySQL DECIMAL 取回来是字符串，统一转数字
+ */
+function toNum(value) {
+  if (value === null || value === undefined || value === '') return null
+  const n = parseFloat(value)
+  return isNaN(n) ? null : n
+}
+
+/**
+ * 体温分级
+ * < 37.3 正常 / 37.3~38 低热 / 38~39 中度发热 / ≥ 39 高热
+ */
+function feverLevel(temp) {
+  if (temp === null) return 'normal'
+  if (temp < 37.3) return 'normal'
+  if (temp < 38) return 'low'
+  if (temp < 39) return 'moderate'
+  return 'high'
+}
+
+const FEVER_TEXT = {
+  normal: '正常',
+  low: '低热',
+  moderate: '中度发热',
+  high: '高热',
+}
 
 /**
  * 某天概览
@@ -37,7 +72,7 @@ router.get('/daily', auth, async (req, res, next) => {
     const from = startOfDay(day)
     const to = endOfDay(day)
 
-    const [feedings, diapers, sleeps] = await Promise.all([
+    const [feedings, diapers, sleeps, exercises, temperatures] = await Promise.all([
       FeedingRecord.findAll({
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         order: [['time', 'ASC']],
@@ -54,6 +89,31 @@ router.get('/daily', auth, async (req, res, next) => {
           recordStatus: 1,
           status: 1,
         },
+        raw: true,
+      }),
+      ExerciseRecord.findAll({
+        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+      TemperatureRecord.findAll({
+        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+    ])
+
+    // 身高体重：各自取最近一次「非空」的测量
+    // 分开查是因为用户可能只量身高或只称体重，用同一条会把另一项抹成空
+    const [latestHeightRow, latestWeightRow] = await Promise.all([
+      GrowthRecord.findOne({
+        where: { babyId: baby.id, status: 1, height: { [Op.ne]: null } },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+      GrowthRecord.findOne({
+        where: { babyId: baby.id, status: 1, weight: { [Op.ne]: null } },
+        order: [['time', 'DESC']],
         raw: true,
       }),
     ])
@@ -85,6 +145,32 @@ router.get('/daily', auth, async (req, res, next) => {
     })
     const ongoingMinutes = ongoing ? diffMinutes(ongoing.startTime, new Date()) : 0
 
+    // 排气操
+    const exerciseMinutes = exercises.reduce((sum, e) => sum + (e.duration || 0), 0)
+    const lastExercise = exercises[0] || null
+
+    // 体温（今天测过的，按时间倒序，第一条就是最新的）
+    const temps = temperatures.map((t) => toNum(t.temperature)).filter((v) => v !== null)
+    const latestTemp = temps.length > 0 ? temps[0] : null
+    const maxTemp = temps.length > 0 ? Math.max(...temps) : null
+    const level = feverLevel(latestTemp)
+
+    // 身高体重（各自最近一次非空测量）
+    const latestHeight = latestHeightRow ? toNum(latestHeightRow.height) : null
+    const latestWeight = latestWeightRow ? toNum(latestWeightRow.weight) : null
+    // 展示的测量时间取两者中较新的那条
+    let measuredAt = null
+    if (latestHeightRow && latestWeightRow) {
+      measuredAt =
+        new Date(latestHeightRow.time) >= new Date(latestWeightRow.time)
+          ? latestHeightRow.time
+          : latestWeightRow.time
+    } else if (latestHeightRow) {
+      measuredAt = latestHeightRow.time
+    } else if (latestWeightRow) {
+      measuredAt = latestWeightRow.time
+    }
+
     res.apiSuccess({
       date: formatDate(day),
       feeding: {
@@ -110,6 +196,30 @@ router.get('/daily', auth, async (req, res, next) => {
         isSleeping: !!ongoing,
         totalMinutes: sleepMinutes + ongoingMinutes,
         totalText: formatDuration(sleepMinutes + ongoingMinutes),
+      },
+      exercise: {
+        count: exercises.length,
+        minutes: exerciseMinutes,
+        minutesText: formatDuration(exerciseMinutes),
+        lastText: lastExercise ? formatTime(lastExercise.time) : '',
+      },
+      temperature: {
+        count: temps.length,
+        latest: latestTemp,
+        latestText: latestTemp !== null ? `${latestTemp}℃` : '',
+        max: maxTemp,
+        level,
+        levelText: FEVER_TEXT[level],
+        isFever: level !== 'normal',
+        timeText: temperatures.length > 0 ? formatTime(temperatures[0].time) : '',
+      },
+      growth: {
+        hasData: latestHeight !== null || latestWeight !== null,
+        height: latestHeight,
+        weight: latestWeight,
+        heightText: latestHeight !== null ? `${latestHeight}cm` : '',
+        weightText: latestWeight !== null ? `${latestWeight}kg` : '',
+        measuredText: measuredAt ? formatDate(measuredAt) : '',
       },
     })
   } catch (err) {

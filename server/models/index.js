@@ -281,6 +281,152 @@ const SleepRecord = sequelize.define('SleepRecord', {
   ],
 })
 
+/**
+ * 排气操记录
+ * 帮助宝宝排气的体操，记一次做了多少分钟
+ */
+const ExerciseRecord = sequelize.define('ExerciseRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 时长（分钟）
+  duration: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+  },
+  // 是否成功排气 / 打嗝（0 未记录 / 1 有 / 2 没有）
+  result: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0,
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'exercise_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
+/**
+ * 生长发育记录（身高 / 体重）
+ * 两个字段都可空，允许只量身高或只称体重
+ */
+const GrowthRecord = sequelize.define('GrowthRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 身高（cm），保留 1 位小数
+  height: {
+    type: DataTypes.DECIMAL(5, 1),
+    allowNull: true,
+  },
+  // 体重（kg），保留 2 位小数
+  weight: {
+    type: DataTypes.DECIMAL(5, 2),
+    allowNull: true,
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'growth_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
+/**
+ * 体温记录
+ */
+const TemperatureRecord = sequelize.define('TemperatureRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 体温（℃），保留 1 位小数
+  temperature: {
+    type: DataTypes.DECIMAL(3, 1),
+    allowNull: false,
+  },
+  // 测量方式：ear 耳温 / forehead 额温 / armpit 腋温 / oral 口温
+  method: {
+    type: DataTypes.ENUM('ear', 'forehead', 'armpit', 'oral'),
+    defaultValue: 'ear',
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'temperature_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
 // ============ 模型关联 ============
 
 // 用户 → 宝宝（一对多）
@@ -297,10 +443,22 @@ DiaperRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 Baby.hasMany(SleepRecord, { foreignKey: 'babyId', as: 'sleeps' })
 SleepRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 
+Baby.hasMany(ExerciseRecord, { foreignKey: 'babyId', as: 'exercises' })
+ExerciseRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
+Baby.hasMany(GrowthRecord, { foreignKey: 'babyId', as: 'growths' })
+GrowthRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
+Baby.hasMany(TemperatureRecord, { foreignKey: 'babyId', as: 'temperatures' })
+TemperatureRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
 // 用户 → 各类记录（一对多，便于按用户维度查询/清理）
 User.hasMany(FeedingRecord, { foreignKey: 'userId', as: 'feedings' })
 User.hasMany(DiaperRecord, { foreignKey: 'userId', as: 'diapers' })
 User.hasMany(SleepRecord, { foreignKey: 'userId', as: 'sleeps' })
+User.hasMany(ExerciseRecord, { foreignKey: 'userId', as: 'exercises' })
+User.hasMany(GrowthRecord, { foreignKey: 'userId', as: 'growths' })
+User.hasMany(TemperatureRecord, { foreignKey: 'userId', as: 'temperatures' })
 
 module.exports = {
   sequelize,
@@ -310,4 +468,7 @@ module.exports = {
   FeedingRecord,
   DiaperRecord,
   SleepRecord,
+  ExerciseRecord,
+  GrowthRecord,
+  TemperatureRecord,
 }

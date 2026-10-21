@@ -265,6 +265,47 @@
   font-size: 32rpx;
 }
 
+/* 第二行按钮 */
+.actions-more {
+  margin-top: 20rpx;
+}
+
+.action-exercise {
+  background: #eef9e9;
+  border-color: #c9eec0;
+}
+
+.action-growth {
+  background: #eaf3ff;
+  border-color: #c2dcff;
+}
+
+.action-temp {
+  background: #fdeef0;
+  border-color: #fbcdd5;
+}
+
+/* 概览第二行 */
+.overview-sub {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx dashed #eee;
+}
+
+/* 数值类文字（体温、体重这种带单位的，字号要小一点） */
+.text-sm {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #222;
+}
+
+/* 弹窗里的说明文字 */
+.sheet-tip {
+  font-size: 24rpx;
+  color: #aaa;
+  margin-bottom: 8rpx;
+}
+
 /* 换尿片选项 */
 .diaper-options {
   display: flex;
