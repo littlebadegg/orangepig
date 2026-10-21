@@ -9,7 +9,7 @@ const { Op } = require('sequelize')
 const router = express.Router()
 
 const { auth } = require('../middleware/auth')
-const { Baby, User, FeedingRecord, DiaperRecord, SleepRecord } = require('../models')
+const { FeedingRecord, DiaperRecord, SleepRecord } = require('../models')
 const {
   formatDate,
   formatTime,
@@ -21,31 +21,7 @@ const {
   safeDate,
 } = require('../utils/time')
 
-async function findOwnBaby(babyId, userId) {
-  if (!babyId) return null
-  return Baby.findOne({ where: { id: babyId, userId, status: 1 } })
-}
-
-/**
- * 解析统计哪个宝宝：参数 → 当前选中 → 第一个宝宝
- */
-async function resolveBaby(req) {
-  if (req.query.babyId) {
-    const baby = await resolveBaby(req)
-    if (baby) return baby
-  }
-
-  const user = await User.findByPk(req.userId)
-  if (user && user.currentBabyId) {
-    const baby = await findOwnBaby(user.currentBabyId, req.userId)
-    if (baby) return baby
-  }
-
-  return Baby.findOne({
-    where: { userId: req.userId, status: 1 },
-    order: [['id', 'ASC']],
-  })
-}
+const { resolveBaby } = require('../utils/baby')
 
 /**
  * 某天概览

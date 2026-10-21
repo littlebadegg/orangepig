@@ -14,7 +14,7 @@ const { Op } = require('sequelize')
 const router = express.Router()
 
 const { auth } = require('../middleware/auth')
-const { Baby, User, FeedingRecord, DiaperRecord, SleepRecord } = require('../models')
+const { FeedingRecord, DiaperRecord, SleepRecord } = require('../models')
 const {
   formatDateTime,
   formatTime,
@@ -26,47 +26,11 @@ const {
   safeDate,
 } = require('../utils/time')
 
+const { resolveBaby } = require('../utils/baby')
+
 // ============ 展示文案 ============
 const DIAPER_LABEL = { pee: '小便', poo: '大便', both: '大小便' }
 const DIAPER_ICON = { pee: '💧', poo: '💩', both: '💩' }
-
-/**
- * 校验宝宝归属当前用户
- */
-async function findOwnBaby(babyId, userId) {
-  if (!babyId) return null
-  return Baby.findOne({ where: { id: babyId, userId, status: 1 } })
-}
-
-/**
- * 解析本次请求操作哪个宝宝
- * 优先级：请求参数 babyId → 用户当前选中 → 用户的第一个宝宝（并自动设为选中）
- *
- * 这样前端即使漏传 babyId 也能正常记录，不会出现「请先选择宝宝」
- */
-async function resolveBaby(req) {
-  const wanted = req.body && req.body.babyId ? req.body.babyId : req.query.babyId
-
-  if (wanted) {
-    const baby = await findOwnBaby(wanted, req.userId)
-    if (baby) return baby
-  }
-
-  const user = await User.findByPk(req.userId)
-  if (user && user.currentBabyId) {
-    const baby = await findOwnBaby(user.currentBabyId, req.userId)
-    if (baby) return baby
-  }
-
-  const first = await Baby.findOne({
-    where: { userId: req.userId, status: 1 },
-    order: [['id', 'ASC']],
-  })
-  if (first && user) {
-    await User.update({ currentBabyId: first.id }, { where: { id: req.userId } })
-  }
-  return first
-}
 
 /**
  * 解析时间：前端传 "YYYY-MM-DD HH:mm:ss"，缺省取当前时间
