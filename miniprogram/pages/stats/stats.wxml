@@ -1,0 +1,88 @@
+<view class="page">
+
+  <view class="baby-bar">
+    <view class="row">
+      <view class="baby-avatar">📊</view>
+      <view class="col baby-meta">
+        <text class="baby-name">{{currentBaby ? currentBaby.name : '还没有宝宝'}}</text>
+        <text class="baby-sub">生长数据统计</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ===== 今日 ===== -->
+  <view class="card" wx:if="{{stats}}">
+    <view class="card-title">今日</view>
+
+    <view class="stat-row">
+      <text class="stat-icon">🍼</text>
+      <view class="col stat-main">
+        <text class="stat-label">喂养</text>
+        <text class="stat-sub">奶粉 {{stats.feeding.formulaCount}} 次 · 母乳 {{stats.feeding.breastCount}} 次</text>
+      </view>
+      <text class="stat-value">{{stats.feeding.totalAmount}} ml</text>
+    </view>
+
+    <view class="divider"></view>
+
+    <view class="stat-row">
+      <text class="stat-icon">🧷</text>
+      <view class="col stat-main">
+        <text class="stat-label">换尿片</text>
+        <text class="stat-sub">大便 {{stats.diaper.pooCount}} 次 · 小便 {{stats.diaper.peeCount}} 次</text>
+      </view>
+      <text class="stat-value">{{stats.diaper.count}} 次</text>
+    </view>
+
+    <view class="divider"></view>
+
+    <view class="stat-row">
+      <text class="stat-icon">😴</text>
+      <view class="col stat-main">
+        <text class="stat-label">睡眠</text>
+        <text class="stat-sub">共 {{stats.sleep.count}} 次{{stats.sleep.isSleeping ? ' · 睡眠中' : ''}}</text>
+      </view>
+      <text class="stat-value">{{stats.sleep.totalText}}</text>
+    </view>
+
+    <view class="avg-tip" wx:if="{{stats.feeding.formulaCount > 0}}">
+      平均每餐 {{stats.feeding.avgAmount}}ml
+    </view>
+  </view>
+
+  <!-- ===== 近 N 天奶量 ===== -->
+  <view class="card" wx:if="{{trend.length > 0}}">
+    <view class="card-title">近 {{days}} 天奶量</view>
+    <view class="trend-row" wx:for="{{trend}}" wx:key="date">
+      <text class="trend-date">{{item.label}}</text>
+      <view class="trend-bar-wrap">
+        <view class="trend-bar" style="width: {{item.barWidth}}%"></view>
+      </view>
+      <text class="trend-num">{{item.totalAmount}}ml</text>
+    </view>
+  </view>
+
+  <!-- ===== 每日明细 ===== -->
+  <view class="card" wx:if="{{trend.length > 0}}">
+    <view class="card-title">每日明细</view>
+    <view class="detail-row detail-head">
+      <text class="d-date">日期</text>
+      <text class="d-item">喂养</text>
+      <text class="d-item">尿片</text>
+      <text class="d-item">睡眠</text>
+    </view>
+    <view class="detail-row" wx:for="{{trend}}" wx:key="date">
+      <text class="d-date">{{item.label}}</text>
+      <text class="d-item">{{item.feedingCount}} 次</text>
+      <text class="d-item">{{item.diaperCount}} 次</text>
+      <text class="d-item">{{item.sleepText || '—'}}</text>
+    </view>
+  </view>
+
+  <view class="empty" wx:if="{{!stats}}">
+    <text class="empty-icon">📊</text>
+    <text>还没有数据，先去记录一条吧</text>
+    <view class="btn btn-primary go-btn" bindtap="goRecord">去记录</view>
+  </view>
+
+</view>

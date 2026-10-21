@@ -1,121 +1,144 @@
 /**
- * 我的页面 — 用户中心入口
+ * 我的 — 宝宝管理（添加 / 切换 / 编辑 / 删除）
  */
-const userService = require('../../services/user')
-const photoService = require('../../services/photo')
-const postService = require('../../services/post')
-const { formatNumber } = require('../../utils/format')
+const babyService = require('../../services/baby')
+const { genderText } = require('../../utils/format')
+
+const GENDER_OPTIONS = ['未知', '男宝', '女宝']
 
 Page({
   data: {
-    userInfo: null,
-    isLogin: false,
-    userId: null,
-    stats: {
-      postCount: 0,
-      photoCount: 0,
-      followingCount: 0,
-      followersCount: 0,
-    },
-    menuList: [
-      { key: 'album', label: '我的相册', icon: '📷' },
-      { key: 'posts', label: '我的发布', icon: '📝' },
-      { key: 'follows', label: '我的关注', icon: '👥' },
-      { key: 'likes', label: '我的点赞', icon: '❤' },
-    ],
+    babies: [],
+    currentBabyId: null,
+
+    // 弹窗
+    showSheet: false,
+    editingId: null,
+    babyName: '',
+    babyGender: 0,
+    babyBirthday: '',
+    genderOptions: GENDER_OPTIONS,
+
+    submitting: false,
   },
 
   onShow() {
-    const app = getApp()
-    if (app && app.globalData) {
-      this.setData({
-        userInfo: app.globalData.userInfo,
-        isLogin: app.globalData.isLogin,
-        userId: app.globalData.userId,
-      })
-
-      if (app.globalData.userId) {
-        this.loadUserData(app.globalData.userId)
-      }
-    }
+    this.refresh()
   },
 
-  /**
-   * 加载用户数据（统计信息）
-   */
-  async loadUserData(userId) {
+  async refresh() {
     try {
-      const [userInfo, photoResult] = await Promise.all([
-        userService.getUserInfo(userId),
-        photoService.getPhotoCount(userId).catch(() => ({ count: 0 })),
-      ])
-
-      this.setData({
-        stats: {
-          postCount: userInfo.postCount || 0,
-          photoCount: photoResult.count || 0,
-          followingCount: userInfo.followingCount || 0,
-          followersCount: userInfo.followersCount || 0,
-        },
-      })
+      const data = await babyService.list()
+      const babies = (data.list || []).map((b) => ({
+        ...b,
+        genderText: genderText(b.gender),
+      }))
+      this.setData({ babies, currentBabyId: data.currentBabyId })
     } catch (err) {
-      console.error('加载用户数据失败:', err)
+      console.error('[mine] 加载失败:', err)
+      wx.showToast({ title: err.message || '加载失败', icon: 'none' })
     }
   },
 
-  /**
-   * 点击菜单
-   */
-  onTapMenu(e) {
-    const { key } = e.currentTarget.dataset
-    if (!this.data.isLogin) {
-      wx.showToast({ title: '请先登录', icon: 'none' })
-      return
-    }
-
-    switch (key) {
-      case 'album':
-        // 切换到相册 tab
-        wx.switchTab({ url: '/pages/search/search' })
-        break
-      case 'posts':
-        wx.navigateTo({
-          url: `/subpackages/user-center/pages/profile/profile?userId=${this.data.userId}`,
-        })
-        break
-      case 'follows':
-        wx.navigateTo({
-          url: `/subpackages/social/pages/follows/follows?userId=${this.data.userId}&type=following`,
-        })
-        break
-      case 'likes':
-        wx.navigateTo({
-          url: '/subpackages/social/pages/likes/likes',
-        })
-        break
+  /** 切换当前宝宝 */
+  async onSelectBaby(e) {
+    const id = e.currentTarget.dataset.id
+    if (id === this.data.currentBabyId) return
+    try {
+      await babyService.select(id)
+      await this.refresh()
+      wx.showToast({ title: '已切换', icon: 'none' })
+    } catch (err) {
+      wx.showToast({ title: err.message || '切换失败', icon: 'none' })
     }
   },
 
-  /**
-   * 点击关注/粉丝
-   */
-  onTapFollow(e) {
-    const { type } = e.currentTarget.dataset
-    if (!this.data.isLogin) {
-      wx.showToast({ title: '请先登录', icon: 'none' })
-      return
-    }
-    wx.navigateTo({
-      url: `/subpackages/social/pages/follows/follows?userId=${this.data.userId}&type=${type}`,
+  /** 新增 */
+  openAdd() {
+    this.setData({
+      showSheet: true,
+      editingId: null,
+      babyName: '',
+      babyGender: 0,
+      babyBirthday: '',
     })
   },
 
-  /**
-   * 点击设置
-   */
-  onTapSettings() {
-    wx.navigateTo({
-      url: '/subpackages/user-center/pages/settings/settings',
+  /** 编辑 */
+  openEdit(e) {
+    const { id, name, gender, birthday } = e.currentTarget.dataset
+    this.setData({
+      showSheet: true,
+      editingId: id,
+      babyName: name || '',
+      babyGender: parseInt(gender) || 0,
+      babyBirthday: birthday || '',
+    })
+  },
+
+  closeSheet() {
+    this.setData({ showSheet: false })
+  },
+
+  onNameInput(e) {
+    this.setData({ babyName: e.detail.value })
+  },
+
+  onGenderChange(e) {
+    this.setData({ babyGender: parseInt(e.detail.value) })
+  },
+
+  onBirthdayChange(e) {
+    this.setData({ babyBirthday: e.detail.value })
+  },
+
+  async submitBaby() {
+    const { babyName, babyGender, babyBirthday, editingId } = this.data
+    const name = (babyName || '').trim()
+
+    if (!name) {
+      wx.showToast({ title: '请输入宝宝昵称', icon: 'none' })
+      return
+    }
+
+    this.setData({ submitting: true })
+    try {
+      const payload = {
+        name,
+        gender: babyGender,
+        birthday: babyBirthday || null,
+      }
+      if (editingId) {
+        await babyService.update(editingId, payload)
+        wx.showToast({ title: '已保存', icon: 'none' })
+      } else {
+        await babyService.create(payload)
+        wx.showToast({ title: '宝宝已添加', icon: 'none' })
+      }
+      this.setData({ showSheet: false })
+      await this.refresh()
+    } catch (err) {
+      wx.showToast({ title: err.message || '保存失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  onDeleteBaby(e) {
+    const { id, name } = e.currentTarget.dataset
+    wx.showModal({
+      title: '删除宝宝',
+      content: `确定删除「${name}」吗？该宝宝的记录会一并隐藏。`,
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await babyService.remove(id)
+          wx.showToast({ title: '已删除', icon: 'none' })
+          await this.refresh()
+        } catch (err) {
+          wx.showToast({ title: err.message || '删除失败', icon: 'none' })
+        }
+      },
     })
   },
 })

@@ -1,0 +1,155 @@
+<view class="page">
+
+  <!-- ===== 宝宝栏 ===== -->
+  <view class="baby-bar">
+    <view class="row">
+      <view class="baby-avatar">👶</view>
+      <view class="col baby-meta">
+        <text class="baby-name">{{currentBaby ? currentBaby.name : '还没有宝宝'}}</text>
+        <text class="baby-sub">{{babySubtitle}}</text>
+      </view>
+    </view>
+    <view class="switch-btn" bindtap="onSwitchBaby">切换</view>
+  </view>
+
+  <!-- ===== 今日概览 ===== -->
+  <view class="card" wx:if="{{stats}}">
+    <view class="card-title">今日概览</view>
+    <view class="overview">
+      <view class="ov-item">
+        <view class="row">
+          <text class="text-num">{{stats.feeding.count}}</text>
+          <text class="text-unit">次</text>
+        </view>
+        <text class="ov-label">🍼 共 {{stats.feeding.totalAmount}}ml</text>
+      </view>
+      <view class="ov-item">
+        <view class="row">
+          <text class="text-num">{{stats.diaper.count}}</text>
+          <text class="text-unit">次</text>
+        </view>
+        <text class="ov-label">🧷 便{{stats.diaper.pooCount}} 尿{{stats.diaper.peeCount}}</text>
+      </view>
+      <view class="ov-item">
+        <view class="row">
+          <text class="text-num">{{stats.sleep.count}}</text>
+          <text class="text-unit">次</text>
+        </view>
+        <text class="ov-label">😴 {{stats.sleep.totalText}}</text>
+      </view>
+    </view>
+    <view class="last-tip" wx:if="{{stats.feeding.lastFeeding}}">
+      上次喂养 {{stats.feeding.lastFeeding.timeText}} · {{stats.feeding.lastFeeding.agoText}} · {{stats.feeding.lastFeeding.title}}
+    </view>
+  </view>
+
+  <!-- ===== 一键记录 ===== -->
+  <view class="card">
+    <view class="card-title">一键记录</view>
+    <view class="actions">
+      <view class="action action-feed" bindtap="openFeeding">
+        <text class="action-icon">🍼</text>
+        <text class="action-label">喂奶</text>
+      </view>
+      <view class="action action-diaper" bindtap="openDiaper">
+        <text class="action-icon">🧷</text>
+        <text class="action-label">换尿片</text>
+      </view>
+      <view class="action action-sleep {{ongoing ? 'action-active' : ''}}" bindtap="onSleepTap">
+        <text class="action-icon">{{ongoing ? '🌞' : '😴'}}</text>
+        <text class="action-label">{{ongoing ? '起床' : '睡觉'}}</text>
+      </view>
+    </view>
+    <view class="sleeping-tip" wx:if="{{ongoing}}">
+      宝宝 {{ongoing.startText}} 入睡 · 已睡 {{sleepElapsed}}
+    </view>
+  </view>
+
+  <!-- ===== 今日记录 ===== -->
+  <view class="card">
+    <view class="row-between">
+      <text class="card-title">今日记录</text>
+      <text class="text-sub">{{list.length}} 条</text>
+    </view>
+
+    <view class="empty" wx:if="{{list.length === 0}}">
+      <text class="empty-icon">📝</text>
+      <text>今天还没有记录，点上面的按钮记一条</text>
+    </view>
+
+    <view class="record-item" wx:for="{{list}}" wx:key="key">
+      <view class="record-icon">{{item.icon}}</view>
+      <view class="col record-main">
+        <text class="record-title">{{item.title}}</text>
+        <text class="record-sub" wx:if="{{item.kind === 'sleep'}}">{{item.subtitle}}</text>
+        <text class="record-sub" wx:if="{{item.note}}">{{item.note}}</text>
+      </view>
+      <text class="record-time">{{item.timeText}}</text>
+      <view class="record-del" data-kind="{{item.kind}}" data-id="{{item.id}}" bindtap="onDeleteRecord">✕</view>
+    </view>
+  </view>
+
+  <!-- ===== 喂奶弹窗 ===== -->
+  <view class="mask" wx:if="{{showFeeding}}" bindtap="closeFeeding"></view>
+  <view class="sheet" wx:if="{{showFeeding}}">
+    <view class="sheet-title">记录喂奶</view>
+    <view class="sheet-close" bindtap="closeFeeding">✕</view>
+
+    <view class="seg">
+      <view class="seg-item {{feedingType === 'formula' ? 'seg-active' : ''}}" data-type="formula" bindtap="setFeedingType">奶粉</view>
+      <view class="seg-item {{feedingType === 'breast' ? 'seg-active' : ''}}" data-type="breast" bindtap="setFeedingType">母乳</view>
+    </view>
+
+    <block wx:if="{{feedingType === 'formula'}}">
+      <view class="sheet-label">奶量（ml）</view>
+      <view class="chips">
+        <view class="chip {{amount === item && !customAmount ? 'chip-active' : ''}}" wx:for="{{amountPresets}}" wx:key="*this" data-value="{{item}}" bindtap="setAmount">{{item}}</view>
+      </view>
+      <input class="input" type="number" placeholder="或输入自定义毫升数" value="{{customAmount}}" bindinput="onAmountInput" />
+    </block>
+
+    <block wx:else>
+      <view class="sheet-label">喂奶时长（分钟）</view>
+      <view class="chips">
+        <view class="chip {{duration === item ? 'chip-active' : ''}}" wx:for="{{durationPresets}}" wx:key="*this" data-value="{{item}}" bindtap="setDuration">{{item}}</view>
+      </view>
+    </block>
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitFeeding">确定记录</view>
+  </view>
+
+  <!-- ===== 换尿片弹窗 ===== -->
+  <view class="mask" wx:if="{{showDiaper}}" bindtap="closeDiaper"></view>
+  <view class="sheet" wx:if="{{showDiaper}}">
+    <view class="sheet-title">记录换尿片</view>
+    <view class="sheet-close" bindtap="closeDiaper">✕</view>
+
+    <view class="diaper-options">
+      <view class="diaper-opt {{diaperType === 'pee' ? 'diaper-active' : ''}}" data-type="pee" bindtap="setDiaperType">
+        <text class="diaper-emoji">💧</text>
+        <text>小便</text>
+      </view>
+      <view class="diaper-opt {{diaperType === 'poo' ? 'diaper-active' : ''}}" data-type="poo" bindtap="setDiaperType">
+        <text class="diaper-emoji">💩</text>
+        <text>大便</text>
+      </view>
+      <view class="diaper-opt {{diaperType === 'both' ? 'diaper-active' : ''}}" data-type="both" bindtap="setDiaperType">
+        <text class="diaper-emoji">💩💧</text>
+        <text>都有</text>
+      </view>
+    </view>
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitDiaper">确定记录</view>
+  </view>
+
+</view>

@@ -1,74 +1,60 @@
 /**
- * 格式化工具
+ * 前端格式化工具
  */
 
-/**
- * 时间格式化 — 相对时间 + 绝对时间
- */
-function formatTime(timestamp) {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  const now = Date.now()
-  const diff = now - timestamp
-
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
-  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
-  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前'
-
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-  return `${month}月${day}日`
+function pad(n) {
+  return String(n).padStart(2, '0')
 }
 
-/**
- * 数字格式化 — 1.2万 / 350
- */
-function formatNumber(num) {
-  if (num === undefined || num === null) return '0'
-  if (num < 10000) return String(num)
-  if (num < 100000000) return (num / 10000).toFixed(1).replace(/\.0$/, '') + '万'
-  return (num / 100000000).toFixed(1).replace(/\.0$/, '') + '亿'
+/** 分钟 → "2小时30分" / "45分钟" */
+function formatDuration(minutes) {
+  const m = Math.max(0, Math.round(minutes || 0))
+  if (m < 60) return `${m}分钟`
+  const h = Math.floor(m / 60)
+  const rest = m % 60
+  return rest === 0 ? `${h}小时` : `${h}小时${rest}分`
 }
 
-/**
- * 内容摘要 — 截断长文本
- */
-function truncate(text, maxLen = 50) {
-  if (!text) return ''
-  if (text.length <= maxLen) return text
-  return text.slice(0, maxLen) + '...'
+/** 当前时间 "2026-10-21 15:40:30"（提交给后端用） */
+function nowString() {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-/**
- * 防抖
- */
-function debounce(fn, delay = 300) {
-  let timer = null
-  return function (...args) {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => fn.apply(this, args), delay)
+/** 今天 "2026-10-21" */
+function todayString() {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** 时间选择器的值 "HH:mm" */
+function timePickerValue(dateStr) {
+  if (!dateStr) {
+    const d = new Date()
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
+  const d = new Date(String(dateStr).replace(/-/g, '/'))
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/**
- * 节流
- */
-function throttle(fn, interval = 300) {
-  let lastTime = 0
-  return function (...args) {
-    const now = Date.now()
-    if (now - lastTime >= interval) {
-      lastTime = now
-      fn.apply(this, args)
-    }
-  }
+/** "2026-10-21" + "15:40" → "2026-10-21 15:40:00" */
+function composeDateTime(dateStr, timeStr) {
+  return `${dateStr} ${timeStr}:00`
+}
+
+/** 性别文案 */
+function genderText(gender) {
+  if (gender === 1) return '男宝'
+  if (gender === 2) return '女宝'
+  return '宝宝'
 }
 
 module.exports = {
-  formatTime,
-  formatNumber,
-  truncate,
-  debounce,
-  throttle,
+  pad,
+  formatDuration,
+  nowString,
+  todayString,
+  timePickerValue,
+  composeDateTime,
+  genderText,
 }

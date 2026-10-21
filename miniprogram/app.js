@@ -1,16 +1,15 @@
 /**
- * App 入口 — 全局生命周期、登录、全局数据
+ * App 入口 — 全局生命周期、静默登录、全局数据
  *
  * 非云开发版本：
- * - 静默登录走后端 /api/auth/login 接口
+ * - 静默登录走后端 /api/auth/login 接口（wx.login 换 openid）
  * - token 存 localStorage，请求头自动携带
- * - 图片上传走后端 /api/upload/image 接口
+ * - 不涉及头像昵称授权，避免隐私合规麻烦
  */
 const { post } = require('./utils/request')
 
 App({
   globalData: {
-    userInfo: null,
     userId: null,
     isLogin: false,
     systemInfo: null,
@@ -20,14 +19,17 @@ App({
 
   onLaunch() {
     // 获取系统信息（导航栏适配用）
-    const systemInfo = wx.getSystemInfoSync()
-    this.globalData.systemInfo = systemInfo
-    this.globalData.statusBarHeight = systemInfo.statusBarHeight
+    try {
+      const systemInfo = wx.getSystemInfoSync()
+      this.globalData.systemInfo = systemInfo
+      this.globalData.statusBarHeight = systemInfo.statusBarHeight
 
-    // 计算导航栏高度
-    const menuButton = wx.getMenuButtonBoundingClientRect()
-    this.globalData.navBarHeight =
-      (menuButton.top - systemInfo.statusBarHeight) * 2 + menuButton.height
+      const menuButton = wx.getMenuButtonBoundingClientRect()
+      this.globalData.navBarHeight =
+        (menuButton.top - systemInfo.statusBarHeight) * 2 + menuButton.height
+    } catch (e) {
+      // 忽略：部分环境取不到
+    }
 
     // 静默登录
     this.silentLogin()
@@ -38,16 +40,11 @@ App({
     if (this.globalData.isLogin) {
       wx.checkSession({
         success: () => {
-          // session 未过期，检查 token 是否有效
           const token = wx.getStorageSync('access_token')
-          if (!token) {
-            this.silentLogin()
-          }
+          if (!token) this.silentLogin()
         },
         fail: () => {
-          // session 过期，重新登录
           this.globalData.isLogin = false
-          this.globalData.userInfo = null
           this.silentLogin()
         },
       })
@@ -70,16 +67,9 @@ App({
             return
           }
           try {
-            const result = await post('/auth/login', {
-              code: res.code,
-            })
-            // 存储 token
+            const result = await post('/auth/login', { code: res.code })
             wx.setStorageSync('access_token', result.token)
-            if (result.refreshToken) {
-              wx.setStorageSync('refresh_token', result.refreshToken)
-            }
             this.globalData.userId = result.userId
-            this.globalData.userInfo = result.userInfo || null
             this.globalData.isLogin = true
             resolve(result)
           } catch (err) {
@@ -91,30 +81,6 @@ App({
           console.error('wx.login 失败:', err)
           reject(err)
         },
-      })
-    })
-  },
-
-  /**
-   * 获取用户信息 — 需要用户主动点击按钮触发
-   * 符合微信隐私规范：不在进入时弹窗，由用户操作触发
-   */
-  getUserProfile() {
-    return new Promise((resolve, reject) => {
-      wx.getUserProfile({
-        desc: '用于完善个人资料',
-        success: (res) => {
-          const { userInfo } = res
-          this.globalData.userInfo = userInfo
-          // 同步到后端
-          post('/auth/profile', {
-            nickName: userInfo.nickName,
-            avatarUrl: userInfo.avatarUrl,
-            gender: userInfo.gender,
-          }).catch(() => {})
-          resolve(userInfo)
-        },
-        fail: reject,
       })
     })
   },

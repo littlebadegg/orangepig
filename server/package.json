@@ -1,7 +1,7 @@
 {
   "name": "orangepig-server",
-  "version": "1.0.0",
-  "description": "橙猪小程序后端服务",
+  "version": "2.0.0",
+  "description": "橙猪宝宝记 — 宝宝喂养记录小程序后端",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -12,12 +12,10 @@
     "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "exifreader": "^4.41.3",
     "express": "^4.18.2",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.0",
     "sequelize": "^6.35.0"
   },

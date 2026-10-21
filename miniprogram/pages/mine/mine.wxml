@@ -1,68 +1,74 @@
-<!-- 我的页面 -->
-<view class="mine-page">
-  <!-- 用户信息卡片 -->
-  <view class="profile-card">
-    <view class="avatar-wrap">
-      <image
-        class="avatar"
-        src="{{userInfo.avatarUrl || '/images/tab/mine.png'}}"
-        mode="aspectFill"
-      ></image>
-    </view>
-    <view class="user-meta" wx:if="{{isLogin}}">
-      <text class="nickname">{{userInfo.nickName || '微信用户'}}</text>
-      <text class="bio">{{userInfo.bio || '这个人很懒，什么都没留下'}}</text>
-    </view>
-    <view class="user-meta" wx:else>
-      <text class="nickname">未登录</text>
-      <text class="bio">点击登录享受更多功能</text>
+<view class="page">
+
+  <!-- ===== 头部 ===== -->
+  <view class="user-bar">
+    <view class="user-avatar">🐷</view>
+    <view class="col">
+      <text class="user-name">橙猪宝宝记</text>
+      <text class="user-sub">记录宝宝每一次成长</text>
     </view>
   </view>
 
-  <!-- 数据统计 -->
-  <view class="stats-bar" wx:if="{{isLogin}}">
-    <view class="stat-item" data-type="following" bindtap="onTapFollow">
-      <text class="stat-num">{{stats.followingCount}}</text>
-      <text class="stat-label">关注</text>
+  <!-- ===== 宝宝列表 ===== -->
+  <view class="card">
+    <view class="row-between">
+      <text class="card-title">我的宝宝</text>
+      <text class="add-btn" bindtap="openAdd">+ 添加</text>
     </view>
-    <view class="stat-divider"></view>
-    <view class="stat-item" data-type="followers" bindtap="onTapFollow">
-      <text class="stat-num">{{stats.followersCount}}</text>
-      <text class="stat-label">粉丝</text>
+
+    <view class="empty" wx:if="{{babies.length === 0}}">
+      <text class="empty-icon">👶</text>
+      <text>还没有添加宝宝</text>
+      <view class="btn btn-primary go-btn" bindtap="openAdd">添加宝宝</view>
     </view>
-    <view class="stat-divider"></view>
-    <view class="stat-item" bindtap="onTapMenu" data-key="posts">
-      <text class="stat-num">{{stats.postCount}}</text>
-      <text class="stat-label">发布</text>
-    </view>
-    <view class="stat-divider"></view>
-    <view class="stat-item" bindtap="onTapMenu" data-key="album">
-      <text class="stat-num">{{stats.photoCount}}</text>
-      <text class="stat-label">照片</text>
+
+    <view class="baby-item {{item.id === currentBabyId ? 'baby-current' : ''}}" wx:for="{{babies}}" wx:key="id">
+      <view class="baby-left" data-id="{{item.id}}" bindtap="onSelectBaby">
+        <text class="baby-emoji">👶</text>
+        <view class="col">
+          <view class="row">
+            <text class="baby-item-name">{{item.name}}</text>
+            <text class="current-tag" wx:if="{{item.id === currentBabyId}}">当前</text>
+          </view>
+          <text class="baby-item-sub">{{item.genderText}} · {{item.birthday || '未设置生日'}}</text>
+        </view>
+      </view>
+      <view class="baby-ops">
+        <text class="baby-op" data-id="{{item.id}}" data-name="{{item.name}}" data-gender="{{item.gender}}" data-birthday="{{item.birthday}}" bindtap="openEdit">编辑</text>
+        <text class="baby-op baby-op-del" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onDeleteBaby">删除</text>
+      </view>
     </view>
   </view>
 
-  <!-- 菜单列表 -->
-  <view class="menu-list">
-    <view
-      wx:for="{{menuList}}"
-      wx:key="key"
-      class="menu-item"
-      data-key="{{item.key}}"
-      bindtap="onTapMenu"
-    >
-      <text class="menu-icon">{{item.icon}}</text>
-      <text class="menu-label">{{item.label}}</text>
-      <text class="menu-arrow">></text>
-    </view>
+  <!-- ===== 小贴士 ===== -->
+  <view class="card">
+    <text class="card-title">使用小贴士</text>
+    <text class="tip-line">🍼 喂奶 — 支持「奶粉毫升」和「母乳时长」两种记法</text>
+    <text class="tip-line">🧷 换尿片 — 区分小便、大便、都有</text>
+    <text class="tip-line">😴 睡觉 — 点一下开始，起床再点一下自动算时长</text>
+    <text class="tip-line">✕ 记录右侧的叉号可以删除误记的记录</text>
   </view>
 
-  <!-- 设置 -->
-  <view class="menu-list">
-    <view class="menu-item" bindtap="onTapSettings">
-      <text class="menu-icon">⚙</text>
-      <text class="menu-label">设置</text>
-      <text class="menu-arrow">></text>
-    </view>
+  <!-- ===== 添加/编辑弹窗 ===== -->
+  <view class="mask" wx:if="{{showSheet}}" bindtap="closeSheet"></view>
+  <view class="sheet" wx:if="{{showSheet}}">
+    <view class="sheet-title">{{editingId ? '编辑宝宝' : '添加宝宝'}}</view>
+    <view class="sheet-close" bindtap="closeSheet">✕</view>
+
+    <view class="sheet-label">昵称</view>
+    <input class="input" placeholder="给宝宝起个名字" value="{{babyName}}" bindinput="onNameInput" maxlength="20" />
+
+    <view class="sheet-label">性别</view>
+    <picker mode="selector" range="{{genderOptions}}" value="{{babyGender}}" bindchange="onGenderChange">
+      <view class="picker">{{genderOptions[babyGender]}}</view>
+    </picker>
+
+    <view class="sheet-label">生日</view>
+    <picker mode="date" value="{{babyBirthday}}" bindchange="onBirthdayChange">
+      <view class="picker">{{babyBirthday || '请选择（可不填）'}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitBaby">{{editingId ? '保存' : '添加'}}</view>
   </view>
+
 </view>

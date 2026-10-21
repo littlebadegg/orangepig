@@ -1,0 +1,151 @@
+/* ===== 统计页 ===== */
+.page {
+  padding-bottom: 60rpx;
+}
+
+/* 顶部宝宝栏 */
+.baby-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #ffa25c, #ff7a45);
+  padding: 36rpx 32rpx 48rpx;
+  color: #fff;
+}
+
+.baby-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44rpx;
+  margin-right: 20rpx;
+}
+
+.baby-name {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.baby-sub {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 4rpx;
+}
+
+/* 统计行 */
+.stat-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.stat-icon {
+  font-size: 40rpx;
+  width: 64rpx;
+  text-align: center;
+}
+
+.stat-main {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 30rpx;
+  color: #222;
+}
+
+.stat-sub {
+  font-size: 24rpx;
+  color: #aaa;
+  margin-top: 2rpx;
+}
+
+.stat-value {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #ff7a45;
+}
+
+.avg-tip {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: #fff8f2;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #c1683c;
+}
+
+/* 趋势条 */
+.trend-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 18rpx;
+}
+
+.trend-date {
+  width: 92rpx;
+  font-size: 24rpx;
+  color: #888;
+}
+
+.trend-bar-wrap {
+  flex: 1;
+  height: 24rpx;
+  background: #f2f3f5;
+  border-radius: 12rpx;
+  margin: 0 16rpx;
+  overflow: hidden;
+}
+
+.trend-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ffb37a, #ff7a45);
+  border-radius: 12rpx;
+}
+
+.trend-num {
+  width: 104rpx;
+  text-align: right;
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 明细表 */
+.detail-row {
+  display: flex;
+  flex-direction: row;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f5f5f5;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-head {
+  color: #999;
+  font-size: 24rpx;
+}
+
+.d-date {
+  width: 120rpx;
+  color: #888;
+}
+
+.d-item {
+  flex: 1;
+  text-align: center;
+}
+
+.go-btn {
+  margin: 30rpx auto 0;
+  width: 240rpx;
+}

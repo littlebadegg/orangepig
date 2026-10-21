@@ -1,113 +1,168 @@
-/* 全局样式 — 内容社交小程序设计系统 */
-
+/**
+ * 全局样式 — 橙猪宝宝记
+ * 温暖育儿风：暖橙主色 + 圆角卡片 + 大按钮
+ */
 page {
-  --color-primary: #FF6B35;
-  --color-primary-light: #FF8C42;
-  --color-bg: #f7f7f7;
-  --color-card: #ffffff;
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #666666;
-  --color-text-tertiary: #999999;
-  --color-border: #f0f0f0;
-  --radius-sm: 8rpx;
-  --radius-md: 16rpx;
-  --radius-lg: 24rpx;
-
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #f6f7f9;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+  color: #222;
   font-size: 28rpx;
-  color: var(--color-text-primary);
-  background: var(--color-bg);
-  box-sizing: border-box;
+  line-height: 1.5;
 }
 
-view, text, image, scroll-view, swiper, navigator {
-  box-sizing: border-box;
-}
-
-/* 通用卡片 */
-.card {
-  background: var(--color-card);
-  border-radius: var(--radius-md);
-  padding: 30rpx;
-  margin: 20rpx;
-}
-
-/* 安全区域底部留白 */
-.safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* 单行省略 */
-.ellipsis {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-/* 多行省略 */
-.ellipsis-2 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-/* flex 工具类 */
-.flex {
+/* ===== 布局 ===== */
+.row {
   display: flex;
+  flex-direction: row;
+  align-items: center;
 }
-.flex-col {
+
+.row-between {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.col {
   display: flex;
   flex-direction: column;
 }
-.flex-center {
+
+.center {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+
 .flex-1 {
   flex: 1;
 }
 
-/* 间距 */
-.gap-sm {
-  gap: 10rpx;
-}
-.gap-md {
-  gap: 20rpx;
-}
-.gap-lg {
-  gap: 30rpx;
+/* ===== 卡片 ===== */
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
 }
 
-/* 按钮 */
-.btn-primary {
-  background: linear-gradient(135deg, #FF8C42, #FF6B35);
-  color: #fff;
-  border: none;
-  border-radius: 44rpx;
+.card-title {
   font-size: 30rpx;
-  height: 88rpx;
-  line-height: 88rpx;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 20rpx;
+}
+
+/* ===== 文字 ===== */
+.text-main {
+  color: #222;
+}
+
+.text-sub {
+  color: #888;
+  font-size: 26rpx;
+}
+
+.text-num {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #ff7a45;
+  line-height: 1.2;
+}
+
+.text-unit {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 4rpx;
+}
+
+/* ===== 按钮 ===== */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  padding: 20rpx 32rpx;
+  background: #f2f3f5;
+  color: #666;
+}
+
+.btn-primary {
+  background: #ff7a45;
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-ghost {
+  background: #fff;
+  color: #ff7a45;
+  border: 2rpx solid #ff7a45;
+}
+
+/* ===== 空状态 ===== */
+.empty {
+  padding: 80rpx 40rpx;
   text-align: center;
+  color: #bbb;
+  font-size: 28rpx;
 }
 
-.btn-primary::after {
-  border: none;
+.empty-icon {
+  font-size: 80rpx;
+  display: block;
+  margin-bottom: 20rpx;
+  opacity: 0.5;
 }
 
-/* 文字颜色 */
-.text-primary {
-  color: var(--color-primary);
+/* ===== 分割线 ===== */
+.divider {
+  height: 1rpx;
+  background: #f0f0f0;
+  margin: 20rpx 0;
 }
-.text-secondary {
-  color: var(--color-text-secondary);
+
+/* ===== 弹窗 ===== */
+.mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
 }
-.text-tertiary {
-  color: var(--color-text-tertiary);
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
+  z-index: 101;
+}
+
+.sheet-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 28rpx;
+}
+
+.sheet-close {
+  position: absolute;
+  right: 32rpx;
+  top: 24rpx;
+  font-size: 40rpx;
+  color: #bbb;
+  line-height: 1;
+  padding: 8rpx;
 }

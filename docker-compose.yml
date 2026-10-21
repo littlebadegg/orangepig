@@ -20,9 +20,9 @@ services:
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - WX_APPID=${WX_APPID}
       - WX_SECRET=${WX_SECRET}
-      - UPLOAD_DIR=uploads
-      - STATIC_BASE_URL=${STATIC_BASE_URL:-http://${DOMAIN:-localhost}}
-      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-15728640}
+      # 首次启动是否插入演示数据（宝宝「小橙子」+ 今日示例记录）
+      # 正式使用建议设成 false
+      - SEED_DEMO=${SEED_DEMO:-true}
     volumes:
       - ./server/uploads:/app/uploads
     networks:

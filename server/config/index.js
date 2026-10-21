@@ -24,9 +24,6 @@ module.exports = {
     appid: process.env.WX_APPID || '',
     secret: process.env.WX_SECRET || '',
   },
-  upload: {
-    dir: process.env.UPLOAD_DIR || 'uploads',
-    maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 15 * 1024 * 1024, // 15MB 支持原图上传
-  },
-  staticBaseUrl: process.env.STATIC_BASE_URL || 'http://localhost:3000',
+  // 启动时是否自动插入演示数据（生产环境可设 SEED_DEMO=false 关闭）
+  seedDemo: process.env.SEED_DEMO !== 'false',
 }

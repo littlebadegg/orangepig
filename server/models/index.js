@@ -1,9 +1,15 @@
 /**
  * Sequelize 实例初始化 + 模型关联定义
  *
+ * 宝宝喂养记录小程序 — 数据模型
+ *
  * 使用方式：
- *   const { User, Post, Comment, Like, Follow } = require('../models')
- *   const user = await User.findByPk(1)
+ *   const { User, Baby, FeedingRecord } = require('../models')
+ *   const list = await FeedingRecord.findAll({ where: { babyId } })
+ *
+ * ⚠️ 时区处理：
+ *   数据库 DATETIME 存的是东八区本地时间，sequelize 配了 timezone: '+08:00'
+ *   读写往返一致，不会出现 8 小时偏移
  */
 const { Sequelize, DataTypes } = require('sequelize')
 const config = require('../config')
@@ -17,12 +23,14 @@ const sequelize = new Sequelize(
     host: config.mysql.host,
     port: config.mysql.port,
     dialect: 'mysql',
+    // 关键：按东八区读写 DATETIME，保证存取一致
+    timezone: '+08:00',
     pool: config.mysql.pool,
     define: {
       timestamps: true,
       createdAt: 'createTime',
       updatedAt: 'updateTime',
-      underscored: true, // 驼峰 → 下划线，如 nickName → nick_name
+      underscored: true, // 驼峰 → 下划线，如 babyId → baby_id
       charset: 'utf8mb4',
       collate: 'utf8mb4_unicode_ci',
     },
@@ -32,6 +40,9 @@ const sequelize = new Sequelize(
 
 // ============ 模型定义 ============
 
+/**
+ * 用户（微信身份）
+ */
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
@@ -49,7 +60,7 @@ const User = sequelize.define('User', {
   },
   nickName: {
     type: DataTypes.STRING(50),
-    defaultValue: '微信用户',
+    defaultValue: '宝宝家长',
     field: 'nick_name',
   },
   avatarUrl: {
@@ -57,23 +68,11 @@ const User = sequelize.define('User', {
     defaultValue: '',
     field: 'avatar_url',
   },
-  gender: {
-    type: DataTypes.TINYINT,
-    defaultValue: 0,
-  },
-  bio: {
-    type: DataTypes.STRING(200),
-    defaultValue: '',
-  },
-  followingCount: {
+  // 当前选中的宝宝（快速切换，避免每次重新选）
+  currentBabyId: {
     type: DataTypes.INTEGER.UNSIGNED,
-    defaultValue: 0,
-    field: 'following_count',
-  },
-  followersCount: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    defaultValue: 0,
-    field: 'followers_count',
+    allowNull: true,
+    field: 'current_baby_id',
   },
   status: {
     type: DataTypes.TINYINT,
@@ -83,88 +82,10 @@ const User = sequelize.define('User', {
   tableName: 'users',
 })
 
-const Post = sequelize.define('Post', {
-  id: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  authorId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-    field: 'author_id',
-  },
-  content: {
-    type: DataTypes.STRING(500),
-    defaultValue: '',
-  },
-  images: {
-    // MySQL 5.7+ 支持 JSON 类型，存储图片 URL 数组
-    type: DataTypes.JSON,
-    defaultValue: [],
-  },
-  topicId: {
-    type: DataTypes.STRING(50),
-    defaultValue: '',
-    field: 'topic_id',
-  },
-  likeCount: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    defaultValue: 0,
-    field: 'like_count',
-  },
-  commentCount: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    defaultValue: 0,
-    field: 'comment_count',
-  },
-  status: {
-    type: DataTypes.TINYINT,
-    defaultValue: 1,
-  },
-}, {
-  tableName: 'posts',
-})
-
-const Comment = sequelize.define('Comment', {
-  id: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  postId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-    field: 'post_id',
-  },
-  authorId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-    field: 'author_id',
-  },
-  content: {
-    type: DataTypes.STRING(200),
-    allowNull: false,
-  },
-  replyToUserId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: true,
-    field: 'reply_to_user_id',
-  },
-  replyToCommentId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: true,
-    field: 'reply_to_comment_id',
-  },
-  status: {
-    type: DataTypes.TINYINT,
-    defaultValue: 1,
-  },
-}, {
-  tableName: 'comments',
-})
-
-const Like = sequelize.define('Like', {
+/**
+ * 宝宝
+ */
+const Baby = sequelize.define('Baby', {
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
     primaryKey: true,
@@ -175,141 +96,218 @@ const Like = sequelize.define('Like', {
     allowNull: false,
     field: 'user_id',
   },
-  targetId: {
-    type: DataTypes.INTEGER.UNSIGNED,
+  name: {
+    type: DataTypes.STRING(30),
     allowNull: false,
-    field: 'target_id',
+    defaultValue: '宝宝',
   },
-  targetType: {
-    type: DataTypes.ENUM('post', 'comment'),
-    defaultValue: 'post',
-    field: 'target_type',
+  // 性别：0 未知 / 1 男 / 2 女
+  gender: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0,
   },
-}, {
-  tableName: 'likes',
-  // 一个用户对同一目标只能点赞一次
-  indexes: [
-    {
-      unique: true,
-      fields: ['user_id', 'target_id', 'target_type'],
-    },
-  ],
-})
-
-const Follow = sequelize.define('Follow', {
-  id: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    primaryKey: true,
-    autoIncrement: true,
+  // 生日
+  birthday: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
   },
-  follower: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-  },
-  following: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-  },
-}, {
-  tableName: 'follows',
-  // 一个人只能关注另一个人一次
-  indexes: [
-    {
-      unique: true,
-      fields: ['follower', 'following'],
-    },
-  ],
-})
-
-const Photo = sequelize.define('Photo', {
-  id: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  userId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-    field: 'user_id',
-  },
-  imageUrl: {
+  avatarUrl: {
     type: DataTypes.STRING(500),
-    allowNull: false,
-    field: 'image_url',
-  },
-  title: {
-    type: DataTypes.STRING(200),
     defaultValue: '',
-  },
-  // 拍照地点（文字描述）
-  location: {
-    type: DataTypes.STRING(200),
-    defaultValue: '',
-  },
-  // 纬度
-  latitude: {
-    type: DataTypes.DECIMAL(10, 7),
-    allowNull: true,
-  },
-  // 经度
-  longitude: {
-    type: DataTypes.DECIMAL(10, 7),
-    allowNull: true,
-  },
-  // 拍照时间（照片本身的拍摄时间）
-  photoTime: {
-    type: DataTypes.DATE,
-    allowNull: true,
-    field: 'photo_time',
+    field: 'avatar_url',
   },
   status: {
     type: DataTypes.TINYINT,
     defaultValue: 1,
   },
 }, {
-  tableName: 'photos',
+  tableName: 'babies',
   indexes: [
     { fields: ['user_id'] },
-    { fields: ['photo_time'] },
+  ],
+})
+
+/**
+ * 喂养记录
+ * type: formula 奶粉（记毫升）/ breast 母乳（记时长）
+ */
+const FeedingRecord = sequelize.define('FeedingRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 喂养方式
+  type: {
+    type: DataTypes.ENUM('formula', 'breast'),
+    defaultValue: 'formula',
+  },
+  // 奶量（毫升）— 奶粉必填
+  amount: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+  },
+  // 时长（分钟）— 母乳亲喂时长
+  duration: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+  },
+  // 喂养时间
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'feeding_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
+/**
+ * 换尿片记录
+ * type: pee 拉尿 / poo 拉屎 / both 都有
+ */
+const DiaperRecord = sequelize.define('DiaperRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  type: {
+    type: DataTypes.ENUM('pee', 'poo', 'both'),
+    defaultValue: 'pee',
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'diaper_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
+/**
+ * 睡眠记录
+ * endTime / duration 为空表示「正在睡」
+ */
+const SleepRecord = sequelize.define('SleepRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  startTime: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    field: 'start_time',
+  },
+  endTime: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'end_time',
+  },
+  // 睡眠时长（分钟），结束时写入
+  duration: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  // 0 进行中 / 1 已完成
+  recordStatus: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0,
+    field: 'record_status',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'sleep_records',
+  indexes: [
+    { fields: ['baby_id', 'start_time'] },
   ],
 })
 
 // ============ 模型关联 ============
 
-// 用户 → 帖子（一对多）
-User.hasMany(Post, { foreignKey: 'authorId', as: 'posts' })
-Post.belongsTo(User, { foreignKey: 'authorId', as: 'author' })
+// 用户 → 宝宝（一对多）
+User.hasMany(Baby, { foreignKey: 'userId', as: 'babies' })
+Baby.belongsTo(User, { foreignKey: 'userId', as: 'user' })
 
-// 用户 → 评论（一对多）
-User.hasMany(Comment, { foreignKey: 'authorId', as: 'comments' })
-Comment.belongsTo(User, { foreignKey: 'authorId', as: 'author' })
+// 宝宝 → 各类记录（一对多）
+Baby.hasMany(FeedingRecord, { foreignKey: 'babyId', as: 'feedings' })
+FeedingRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 
-// 帖子 → 评论（一对多）
-Post.hasMany(Comment, { foreignKey: 'postId', as: 'comments' })
-Comment.belongsTo(Post, { foreignKey: 'postId', as: 'post' })
+Baby.hasMany(DiaperRecord, { foreignKey: 'babyId', as: 'diapers' })
+DiaperRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 
-// 评论回复关联（自关联）
-Comment.belongsTo(User, { foreignKey: 'replyToUserId', as: 'replyToUser' })
+Baby.hasMany(SleepRecord, { foreignKey: 'babyId', as: 'sleeps' })
+SleepRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 
-// 用户 → 点赞（一对多）
-User.hasMany(Like, { foreignKey: 'userId', as: 'likes' })
-Like.belongsTo(User, { foreignKey: 'userId', as: 'user' })
-
-// 用户 → 关注关系（多对多）
-Follow.belongsTo(User, { foreignKey: 'follower', as: 'followerUser' })
-Follow.belongsTo(User, { foreignKey: 'following', as: 'followingUser' })
-
-// 用户 → 照片（一对多）
-User.hasMany(Photo, { foreignKey: 'userId', as: 'photos' })
-Photo.belongsTo(User, { foreignKey: 'userId', as: 'user' })
+// 用户 → 各类记录（一对多，便于按用户维度查询/清理）
+User.hasMany(FeedingRecord, { foreignKey: 'userId', as: 'feedings' })
+User.hasMany(DiaperRecord, { foreignKey: 'userId', as: 'diapers' })
+User.hasMany(SleepRecord, { foreignKey: 'userId', as: 'sleeps' })
 
 module.exports = {
   sequelize,
   Sequelize,
   User,
-  Post,
-  Comment,
-  Like,
-  Follow,
-  Photo,
+  Baby,
+  FeedingRecord,
+  DiaperRecord,
+  SleepRecord,
 }
