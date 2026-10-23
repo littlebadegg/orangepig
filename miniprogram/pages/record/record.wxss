@@ -275,6 +275,16 @@
   margin-top: 20rpx;
 }
 
+.action-spitup {
+  background: #fff0e0;
+  border-color: #ffd39b;
+}
+
+.action-bath {
+  background: #e6f6ff;
+  border-color: #b3e2ff;
+}
+
 .action-exercise {
   background: #eef9e9;
   border-color: #c9eec0;
@@ -302,6 +312,36 @@
   font-size: 34rpx;
   font-weight: 600;
   color: #222;
+}
+
+/* 最近一次身高体重（单独一行，不跟四个计数挤在一起） */
+.growth-line {
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx dashed #eee;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.growth-item {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #222;
+  margin-right: 32rpx;
+}
+
+.growth-date {
+  font-size: 24rpx;
+  color: #aaa;
+  margin-left: auto;
+}
+
+/* 记录人：家人一起记的时候显示这条是谁录的 */
+.record-by {
+  font-size: 22rpx;
+  color: #ff9a6c;
+  margin-top: 4rpx;
 }
 
 /* 弹窗里的说明文字 */
@@ -342,4 +382,118 @@
   border-color: #ff7a45;
   color: #ff7a45;
   font-weight: 600;
+}
+
+/* ===== 今日养育评分 ===== */
+.score-card {
+  background: linear-gradient(180deg, #fff8f2 0%, #ffffff 42%);
+}
+
+.score-level {
+  font-size: 24rpx;
+  color: #ff7a45;
+  background: #fff1e8;
+  border-radius: 999rpx;
+  padding: 4rpx 18rpx;
+}
+
+.score-main {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  margin: 8rpx 0 20rpx;
+}
+
+.score-total {
+  font-size: 88rpx;
+  font-weight: 700;
+  color: #ff7a45;
+  line-height: 1;
+}
+
+.score-unit {
+  font-size: 28rpx;
+  color: #ff7a45;
+  margin-left: 6rpx;
+}
+
+.score-sub {
+  font-size: 22rpx;
+  color: #999;
+  margin-left: 16rpx;
+}
+
+.score-item {
+  margin-bottom: 18rpx;
+}
+
+.score-item-label {
+  font-size: 26rpx;
+  color: #444;
+}
+
+.score-item-score {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.score-bar {
+  height: 10rpx;
+  background: #f2f2f2;
+  border-radius: 999rpx;
+  margin: 8rpx 0 6rpx;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffb07a, #ff7a45);
+  border-radius: 999rpx;
+}
+
+.score-item-detail {
+  font-size: 22rpx;
+  color: #aaa;
+}
+
+.score-tags {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: 4rpx;
+}
+
+.score-tag {
+  font-size: 22rpx;
+  border-radius: 8rpx;
+  padding: 4rpx 12rpx;
+  margin: 6rpx 12rpx 0 0;
+}
+
+.tag-bonus {
+  color: #2f9e44;
+  background: #ebfbee;
+}
+
+.tag-penalty {
+  color: #e34d59;
+  background: #fff0f1;
+}
+
+.score-tips {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f5f5f5;
+}
+
+.score-tip {
+  display: block;
+  font-size: 22rpx;
+  color: #999;
+  line-height: 1.7;
+}
+
+/* 记录项点击反馈 */
+.record-hover {
+  background: #fafafa;
 }

@@ -42,8 +42,8 @@
       上次喂养 {{stats.feeding.lastFeeding.timeText}} · {{stats.feeding.lastFeeding.agoText}} · {{stats.feeding.lastFeeding.title}}
     </view>
 
-    <!-- 第二行：排气操 / 体温 / 身高体重 -->
-    <view class="overview overview-sub" wx:if="{{stats && (stats.exercise.count || stats.temperature.count || stats.growth.hasData)}}">
+    <!-- 第二行：排气操 / 吐奶 / 洗澡 / 体温 -->
+    <view class="overview overview-sub" wx:if="{{stats && (stats.exercise.count || stats.spitUp.count || stats.bath.count || stats.temperature.count)}}">
       <view class="ov-item">
         <view class="row">
           <text class="text-num">{{stats.exercise.count}}</text>
@@ -52,13 +52,66 @@
         <text class="ov-label">🤸 {{stats.exercise.minutesText || '—'}}</text>
       </view>
       <view class="ov-item">
+        <view class="row">
+          <text class="text-num">{{stats.spitUp.count}}</text>
+          <text class="text-unit">次</text>
+        </view>
+        <text class="ov-label">🤮 {{stats.spitUp.lastLevelText || '没吐奶'}}</text>
+      </view>
+      <view class="ov-item">
+        <view class="row">
+          <text class="text-num">{{stats.bath.count}}</text>
+          <text class="text-unit">次</text>
+        </view>
+        <text class="ov-label">🛁 {{stats.bath.minutesText || '—'}}</text>
+      </view>
+      <view class="ov-item">
         <text class="text-num text-sm">{{stats.temperature.latestText || '—'}}</text>
         <text class="ov-label">🌡️ {{stats.temperature.levelText}}</text>
       </view>
-      <view class="ov-item">
-        <text class="text-num text-sm">{{stats.growth.weightText || '—'}}</text>
-        <text class="ov-label">📏 {{stats.growth.heightText || '未记录'}}</text>
+    </view>
+
+    <!-- 第三行：最近一次身高体重 -->
+    <view class="growth-line" wx:if="{{stats && stats.growth.hasData}}">
+      <text class="growth-item">📏 {{stats.growth.heightText || '—'}}</text>
+      <text class="growth-item">⚖️ {{stats.growth.weightText || '—'}}</text>
+      <text class="growth-date" wx:if="{{stats.growth.measuredText}}">{{stats.growth.measuredText}}</text>
+    </view>
+  </view>
+
+  <!-- ===== 今日养育评分 ===== -->
+  <view class="card score-card" wx:if="{{stats && stats.score}}">
+    <view class="row-between">
+      <text class="card-title">今日养育评分</text>
+      <text class="score-level">{{stats.score.level}}</text>
+    </view>
+
+    <view class="score-main">
+      <text class="score-total">{{stats.score.total}}</text>
+      <text class="score-unit">分</text>
+      <text class="score-sub">基础 {{stats.score.base}} 分 · 加分 +{{stats.score.bonus}} 分</text>
+    </view>
+
+    <view class="score-items">
+      <view class="score-item" wx:for="{{stats.score.items}}" wx:key="key">
+        <view class="row-between">
+          <text class="score-item-label">{{item.icon}} {{item.label}}</text>
+          <text class="score-item-score">{{item.score}}/{{item.max}}</text>
+        </view>
+        <view class="score-bar">
+          <view class="score-bar-fill" style="width: {{item.score / item.max * 100}}%"></view>
+        </view>
+        <text class="score-item-detail">{{item.detail}}</text>
       </view>
+    </view>
+
+    <view class="score-tags" wx:if="{{stats.score.bonusItems.length > 0 || stats.score.penaltyItems.length > 0}}">
+      <text class="score-tag tag-bonus" wx:for="{{stats.score.bonusItems}}" wx:key="label">+{{item.value}} {{item.label}}</text>
+      <text class="score-tag tag-penalty" wx:for="{{stats.score.penaltyItems}}" wx:key="label">{{item.value}} {{item.label}}</text>
+    </view>
+
+    <view class="score-tips" wx:if="{{stats.score.tips.length > 0}}">
+      <text class="score-tip" wx:for="{{stats.score.tips}}" wx:key="*this">· {{item}}</text>
     </view>
   </view>
 
@@ -78,8 +131,16 @@
         <text class="action-icon">{{ongoing ? '🌞' : '😴'}}</text>
         <text class="action-label">{{ongoing ? '起床' : '睡觉'}}</text>
       </view>
+      <view class="action action-spitup" hover-class="action-hover" bindtap="openSpitUp">
+        <text class="action-icon">🤮</text>
+        <text class="action-label">吐奶</text>
+      </view>
     </view>
     <view class="actions actions-more">
+      <view class="action action-bath" hover-class="action-hover" bindtap="openBath">
+        <text class="action-icon">🛁</text>
+        <text class="action-label">洗澡</text>
+      </view>
       <view class="action action-exercise" hover-class="action-hover" bindtap="openExercise">
         <text class="action-icon">🤸</text>
         <text class="action-label">排气操</text>
@@ -110,15 +171,16 @@
       <text>今天还没有记录，点上面的按钮记一条</text>
     </view>
 
-    <view class="record-item" wx:for="{{list}}" wx:key="key">
+    <view class="record-item" wx:for="{{list}}" wx:key="key" data-kind="{{item.kind}}" data-id="{{item.id}}" bindtap="onEditRecord" hover-class="record-hover">
       <view class="record-icon">{{item.icon}}</view>
       <view class="col record-main">
         <text class="record-title">{{item.title}}</text>
         <text class="record-sub" wx:if="{{item.kind === 'sleep'}}">{{item.subtitle}}</text>
         <text class="record-sub" wx:if="{{item.note}}">{{item.note}}</text>
+        <text class="record-by" wx:if="{{item.recorder}}">{{item.recorder}}记的</text>
       </view>
       <text class="record-time">{{item.timeText}}</text>
-      <view class="record-del" data-kind="{{item.kind}}" data-id="{{item.id}}" bindtap="onDeleteRecord">✕</view>
+      <view class="record-del" data-kind="{{item.kind}}" data-id="{{item.id}}" catchtap="onDeleteRecord">✕</view>
     </view>
   </view>
 
@@ -153,7 +215,7 @@
       <view class="picker">{{timeValue}}</view>
     </picker>
 
-    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitFeeding">确定记录</view>
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitFeeding">{{editingId ? '保存修改' : '确定记录'}}</view>
   </view>
 
   <!-- ===== 换尿片弹窗 ===== -->
@@ -182,7 +244,7 @@
       <view class="picker">{{timeValue}}</view>
     </picker>
 
-    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitDiaper">确定记录</view>
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitDiaper">{{editingId ? '保存修改' : '确定记录'}}</view>
   </view>
 
   <!-- ===== 排气操弹窗 ===== -->
@@ -208,7 +270,7 @@
       <view class="picker">{{timeValue}}</view>
     </picker>
 
-    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitExercise">确定记录</view>
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitExercise">{{editingId ? '保存修改' : '确定记录'}}</view>
   </view>
 
   <!-- ===== 身高体重弹窗 ===== -->
@@ -230,7 +292,7 @@
       <view class="picker">{{timeValue}}</view>
     </picker>
 
-    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitGrowth">确定记录</view>
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitGrowth">{{editingId ? '保存修改' : '确定记录'}}</view>
   </view>
 
   <!-- ===== 体温弹窗 ===== -->
@@ -255,7 +317,81 @@
       <view class="picker">{{timeValue}}</view>
     </picker>
 
-    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitTemperature">确定记录</view>
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitTemperature">{{editingId ? '保存修改' : '确定记录'}}</view>
+  </view>
+
+  <!-- ===== 吐奶弹窗 ===== -->
+  <view class="mask" wx:if="{{showSpitUp}}" bindtap="closeSpitUp"></view>
+  <view class="sheet" wx:if="{{showSpitUp}}">
+    <view class="sheet-title">记录吐奶</view>
+    <view class="sheet-close" bindtap="closeSpitUp">✕</view>
+
+    <view class="sheet-label">吐了多少</view>
+    <view class="diaper-options">
+      <view class="diaper-opt {{spitUpLevel === 1 ? 'diaper-active' : ''}}" data-level="1" bindtap="setSpitUpLevel">
+        <text class="diaper-emoji">💧</text>
+        <text>少量</text>
+      </view>
+      <view class="diaper-opt {{spitUpLevel === 2 ? 'diaper-active' : ''}}" data-level="2" bindtap="setSpitUpLevel">
+        <text class="diaper-emoji">🥛</text>
+        <text>中量</text>
+      </view>
+      <view class="diaper-opt {{spitUpLevel === 3 ? 'diaper-active' : ''}}" data-level="3" bindtap="setSpitUpLevel">
+        <text class="diaper-emoji">🍼</text>
+        <text>大量</text>
+      </view>
+    </view>
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitSpitUp">{{editingId ? '保存修改' : '确定记录'}}</view>
+  </view>
+
+  <!-- ===== 洗澡弹窗 ===== -->
+  <view class="mask" wx:if="{{showBath}}" bindtap="closeBath"></view>
+  <view class="sheet" wx:if="{{showBath}}">
+    <view class="sheet-title">记录洗澡</view>
+    <view class="sheet-close" bindtap="closeBath">✕</view>
+
+    <view class="sheet-label">洗了多久（分钟，可不填）</view>
+    <view class="chips">
+      <view class="chip {{bathDuration === item ? 'chip-active' : ''}}" wx:for="{{bathPresets}}" wx:key="*this" data-value="{{item}}" bindtap="setBathDuration">{{item}}</view>
+      <view class="chip {{bathDuration === 0 ? 'chip-active' : ''}}" data-value="0" bindtap="setBathDuration">不记时长</view>
+    </view>
+
+    <view class="sheet-label">水温（℃，选填）</view>
+    <input class="input" type="digit" placeholder="例如 38.0" value="{{bathWaterTemp}}" bindinput="onBathTempInput" />
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitBath">{{editingId ? '保存修改' : '确定记录'}}</view>
+  </view>
+
+  <!-- ===== 睡眠编辑弹窗 ===== -->
+  <view class="mask" wx:if="{{showSleepEdit}}" bindtap="closeSleepEdit"></view>
+  <view class="sheet" wx:if="{{showSleepEdit}}">
+    <view class="sheet-title">编辑睡眠</view>
+    <view class="sheet-close" bindtap="closeSleepEdit">✕</view>
+
+    <view class="sheet-label">入睡时间</view>
+    <picker mode="time" value="{{sleepStart}}" bindchange="onSleepStartChange">
+      <view class="picker">{{sleepStart}}</view>
+    </picker>
+
+    <view class="sheet-label">起床时间</view>
+    <picker mode="time" value="{{sleepEnd}}" bindchange="onSleepEndChange">
+      <view class="picker">{{sleepEnd}}</view>
+    </picker>
+
+    <view class="sheet-tip">起床时间早于入睡时间时，会自动算作第二天</view>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitSleepEdit">保存修改</view>
   </view>
 
 </view>

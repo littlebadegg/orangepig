@@ -71,6 +71,32 @@
       <text class="stat-value {{stats.temperature.isFever ? 'stat-value-warn' : ''}}">{{stats.temperature.latestText || '—'}}</text>
     </view>
 
+    <view class="divider"></view>
+
+    <view class="stat-row">
+      <text class="stat-icon">🤮</text>
+      <view class="col stat-main">
+        <text class="stat-label">吐奶</text>
+        <text class="stat-sub">
+          {{stats.spitUp.count > 0 ? '今日 ' + stats.spitUp.count + ' 次' + (stats.spitUp.lastText ? ' · 最近 ' + stats.spitUp.lastText + ' ' + stats.spitUp.lastLevelText : '') : '今天没吐奶，很好'}}
+        </text>
+      </view>
+      <text class="stat-value">{{stats.spitUp.count}} 次</text>
+    </view>
+
+    <view class="divider"></view>
+
+    <view class="stat-row">
+      <text class="stat-icon">🛁</text>
+      <view class="col stat-main">
+        <text class="stat-label">洗澡</text>
+        <text class="stat-sub">
+          {{stats.bath.count > 0 ? '今日 ' + stats.bath.count + ' 次 · ' + stats.bath.minutesText + (stats.bath.lastWaterTemp ? ' · 水温 ' + stats.bath.lastWaterTemp + '℃' : '') : '今天还没洗'}}
+        </text>
+      </view>
+      <text class="stat-value">{{stats.bath.count}} 次</text>
+    </view>
+
     <view class="avg-tip" wx:if="{{stats.feeding.formulaCount > 0}}">
       平均每餐 {{stats.feeding.avgAmount}}ml
     </view>

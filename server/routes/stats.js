@@ -16,6 +16,8 @@ const {
   ExerciseRecord,
   GrowthRecord,
   TemperatureRecord,
+  SpitUpRecord,
+  BathRecord,
 } = require('../models')
 const {
   formatDate,
@@ -29,6 +31,7 @@ const {
 } = require('../utils/time')
 
 const { resolveBaby } = require('../utils/baby')
+const { computeScore } = require('../utils/score')
 
 /**
  * MySQL DECIMAL 取回来是字符串，统一转数字
@@ -58,6 +61,9 @@ const FEVER_TEXT = {
   high: '高热',
 }
 
+// 吐奶量：1 少量 / 2 中量 / 3 大量
+const SPIT_UP_LABEL = { 1: '少量', 2: '中量', 3: '大量' }
+
 /**
  * 某天概览
  */
@@ -72,7 +78,7 @@ router.get('/daily', auth, async (req, res, next) => {
     const from = startOfDay(day)
     const to = endOfDay(day)
 
-    const [feedings, diapers, sleeps, exercises, temperatures] = await Promise.all([
+    const [feedings, diapers, sleeps, exercises, temperatures, spitUps, baths] = await Promise.all([
       FeedingRecord.findAll({
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         order: [['time', 'ASC']],
@@ -97,6 +103,16 @@ router.get('/daily', auth, async (req, res, next) => {
         raw: true,
       }),
       TemperatureRecord.findAll({
+        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+      SpitUpRecord.findAll({
+        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+      BathRecord.findAll({
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         order: [['time', 'DESC']],
         raw: true,
@@ -154,6 +170,13 @@ router.get('/daily', auth, async (req, res, next) => {
     const latestTemp = temps.length > 0 ? temps[0] : null
     const maxTemp = temps.length > 0 ? Math.max(...temps) : null
     const level = feverLevel(latestTemp)
+
+    // 洗澡（今天洗过几次、累计多久）
+    const bathMinutes = baths.reduce((sum, b) => sum + (b.duration || 0), 0)
+    const lastBath = baths[0] || null
+
+    // 吐奶
+    const lastSpitUp = spitUps[0] || null
 
     // 身高体重（各自最近一次非空测量）
     const latestHeight = latestHeightRow ? toNum(latestHeightRow.height) : null
@@ -221,6 +244,31 @@ router.get('/daily', auth, async (req, res, next) => {
         weightText: latestWeight !== null ? `${latestWeight}kg` : '',
         measuredText: measuredAt ? formatDate(measuredAt) : '',
       },
+      spitUp: {
+        count: spitUps.length,
+        lastText: lastSpitUp ? formatTime(lastSpitUp.time) : '',
+        lastLevel: lastSpitUp ? lastSpitUp.level : null,
+        lastLevelText: lastSpitUp ? SPIT_UP_LABEL[lastSpitUp.level] || '' : '',
+      },
+      bath: {
+        count: baths.length,
+        minutes: bathMinutes,
+        minutesText: formatDuration(bathMinutes),
+        lastText: lastBath ? formatTime(lastBath.time) : '',
+        lastWaterTemp: lastBath ? toNum(lastBath.waterTemp) : null,
+      },
+      // 每日养育评分（0~100，含各维度得分、加减分明细与建议）
+      score: computeScore({
+        feedings,
+        diapers,
+        sleeps,
+        exercises,
+        temperatures,
+        spitUps,
+        baths,
+        sleepMinutes,
+        ongoingMinutes,
+      }),
     })
   } catch (err) {
     next(err)

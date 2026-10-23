@@ -1,0 +1,172 @@
+# ============================================================
+# 橙猪宝宝记 — Rancher / Kubernetes 部署清单
+#
+# 与 docker-compose 的差异：
+#   - Rancher Ingress 替代了 nginx 容器（SSL 也由 Ingress 处理）
+#   - 不需要 DOMAIN / NGINX_PORT（那是 compose 里 nginx 用的）
+#   - 镜像从 Nexus 拉取：registry.grindsword.top/docker-hosted/orangepig-server:latest
+#
+# 使用步骤：
+#   1. 先创建 Nexus 拉取凭证（见文件末尾的 kubectl 命令）
+#   2. 修改下方所有「改成...」占位符
+#   3. kubectl apply -f rancher-deploy.yaml
+#      （或在 Rancher UI 里 Workload → Import YAML 粘贴本文件）
+# ============================================================
+
+# ---------- 1. uploads 持久化存储 ----------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: orangepig-uploads
+  namespace: default          # 改成你的命名空间
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# ---------- 2. 后端 Deployment ----------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orangepig-server
+  namespace: default          # 改成你的命名空间
+  labels:
+    app: orangepig-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orangepig-server
+  template:
+    metadata:
+      labels:
+        app: orangepig-server
+    spec:
+      # Nexus 是私有仓库（BASIC 认证），必须挂拉取凭证
+      imagePullSecrets:
+        - name: orangepig-nexus-auth
+      containers:
+        - name: server
+          image: registry.grindsword.top/docker-hosted/orangepig-server:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            # ⚠️ 最关键的一项：MySQL 真实地址，绝不能填 localhost！
+            #   集群内有 MySQL Service：填 mysql.<namespace>.svc.cluster.local
+            #   同命名空间也可直接填 Service 名：mysql
+            #   外部数据库：填内网 IP 或域名（如 192.168.1.10）
+            #   宿主机上的 MySQL：填宿主机内网 IP，不能 localhost/127.0.0.1
+            - name: DB_HOST
+              value: "改成你的MySQL地址"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "orangepig"
+            - name: DB_USER
+              value: "改成你的数据库用户"
+            - name: DB_PASSWORD
+              value: "改成你的数据库密码"
+            # JWT 密钥：随机长字符串，跟服务器 .env 保持一致（改了旧登录会失效）
+            - name: JWT_SECRET
+              value: "改成你的JWT密钥"
+            - name: JWT_EXPIRES_IN
+              value: "7d"
+            # 微信小程序凭证
+            - name: WX_APPID
+              value: "改成你的AppID"
+            - name: WX_SECRET
+              value: "改成你的AppSecret"
+            # 正式环境关掉演示数据
+            - name: SEED_DEMO
+              value: "false"
+          # 上传文件挂到 PVC，Pod 重启不丢
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+          # 健康检查（镜像里已内置 /api/health）
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: orangepig-uploads
+---
+# ---------- 3. Service（集群内访问入口） ----------
+apiVersion: v1
+kind: Service
+metadata:
+  name: orangepig-server
+  namespace: default          # 改成你的命名空间
+spec:
+  type: ClusterIP
+  selector:
+    app: orangepig-server
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+# ---------- 4. Ingress（公网域名 → 后端，SSL 由 Ingress 处理） ----------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orangepig
+  namespace: default          # 改成你的命名空间
+  annotations:
+    # 有上传/图片时调大 body 限制
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  # ingressClassName 按你集群实际填写（Rancher 常见为 nginx）
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.your-domain.com          # 改成你的 API 域名
+      secretName: orangepig-tls        # Ingress TLS 证书（Rancher/cert-manager 签发）
+  rules:
+    - host: api.your-domain.com        # 改成你的 API 域名
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: orangepig-server
+                port:
+                  number: 3000
+
+# ============================================================
+# 附：创建 Nexus 拉取凭证（先执行这条再 apply 本文件）
+#
+# kubectl create secret docker-registry orangepig-nexus-auth \
+#   --docker-server=registry.grindsword.top \
+#   --docker-username='<Nexus用户名>' \
+#   --docker-password='<Nexus密码>' \
+#   -n default
+#
+# 常见坑：
+#   1. 拉镜像报 x509 证书错误 → registry.grindsword.top 若是自签证书，
+#      需要在每个节点给 containerd 配置该 registry 的 CA 证书
+#      （RKE2: /var/lib/rancher/rke2/agent/etc/containerd/certs.d/...）
+#   2. DB_HOST 填 localhost → 就是本次 ECONNREFUSED ::1:3306 的原因
+#   3. 小程序端 utils/config.js 的 BASE_URL 要改成 Ingress 的 HTTPS 域名，
+#      并在微信公众平台「开发设置→服务器域名」加入 request 合法域名
+# ============================================================

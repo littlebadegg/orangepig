@@ -57,6 +57,29 @@ function normalizeStats(stats) {
     exercise: s.exercise || {},
     temperature: s.temperature || {},
     growth: s.growth || {},
+    spitUp: s.spitUp || {},
+    bath: s.bath || {},
+    // 评分对象：后端旧版本可能没有 score，这里补一个空壳，避免 WXML 访问 .items 报错
+    score:
+      s.score && typeof s.score === 'object'
+        ? {
+            ...s.score,
+            items: s.score.items || [],
+            bonusItems: s.score.bonusItems || [],
+            penaltyItems: s.score.penaltyItems || [],
+            tips: s.score.tips || [],
+          }
+        : {
+            total: 0,
+            level: '待加强',
+            base: 0,
+            bonus: 0,
+            penalty: 0,
+            items: [],
+            bonusItems: [],
+            penaltyItems: [],
+            tips: [],
+          },
   }
 }
 

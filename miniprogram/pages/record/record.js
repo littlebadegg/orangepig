@@ -10,6 +10,10 @@ const AMOUNT_PRESETS = [60, 90, 120, 150, 180, 210]
 const DURATION_PRESETS = [10, 15, 20, 30]
 // 排气操时长（分钟）
 const EXERCISE_PRESETS = [3, 5, 10, 15]
+// 洗澡时长（分钟）
+const BATH_PRESETS = [5, 10, 15, 20]
+// 吐奶量文案
+const SPIT_UP_TEXT = { 1: '少量', 2: '中量', 3: '大量' }
 // 体温快捷值（℃）
 const TEMP_PRESETS = [36.5, 37.0, 37.5, 38.0]
 // 体温测量方式
@@ -69,9 +73,28 @@ Page({
     customTemperature: '',
     tempMethod: 'ear',
 
+    // 吐奶弹窗
+    showSpitUp: false,
+    spitUpLevel: 1, // 1 少量 | 2 中量 | 3 大量
+
+    // 洗澡弹窗
+    showBath: false,
+    bathDuration: 10,
+    bathWaterTemp: '',
+
+    // 编辑态：editingId 不为空时，弹窗走「修改」而不是「新增」
+    editingId: null,
+    editingKind: '',
+
+    // 睡眠编辑弹窗（睡眠没有普通弹窗，单独一个）
+    showSleepEdit: false,
+    sleepStart: '',
+    sleepEnd: '',
+
     amountPresets: AMOUNT_PRESETS,
     durationPresets: DURATION_PRESETS,
     exercisePresets: EXERCISE_PRESETS,
+    bathPresets: BATH_PRESETS,
     tempPresets: TEMP_PRESETS,
     tempMethods: TEMP_METHODS,
     loading: true,
@@ -217,6 +240,8 @@ Page({
     if (!this.checkBaby()) return
     this.setData({
       showFeeding: true,
+      editingId: null,
+      editingKind: '',
       customAmount: '',
       amount: 120,
       duration: 20,
@@ -261,19 +286,29 @@ Page({
       return
     }
 
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
     this.setData({ submitting: true })
     try {
-      await recordService.addFeeding({
+      const payload = {
         babyId: currentBabyId,
         type: feedingType,
         amount: feedingType === 'formula' ? finalAmount : null,
         duration: feedingType === 'breast' ? duration : null,
         time: `${todayString()} ${timeValue}:00`,
-      })
-      this.setData({ showFeeding: false })
+      }
+      if (isEdit) {
+        await recordService.update('feeding', editingId, payload)
+      } else {
+        await recordService.addFeeding(payload)
+      }
+      this.setData({ showFeeding: false, editingId: null, editingKind: '' })
       wx.showToast({
-        title:
-          feedingType === 'formula' ? `已记录 ${finalAmount}ml` : `已记录 ${duration}分钟`,
+        title: isEdit
+          ? '已保存修改'
+          : feedingType === 'formula'
+            ? `已记录 ${finalAmount}ml`
+            : `已记录 ${duration}分钟`,
         icon: 'none',
       })
       await this.loadRecords()
@@ -290,6 +325,8 @@ Page({
     if (!this.checkBaby()) return
     this.setData({
       showDiaper: true,
+      editingId: null,
+      editingKind: '',
       diaperType: 'pee',
       timeValue: currentHM(),
     })
@@ -307,15 +344,25 @@ Page({
     const { diaperType, timeValue, currentBabyId } = this.data
     const labelMap = { pee: '小便', poo: '大便', both: '大小便' }
 
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
     this.setData({ submitting: true })
     try {
-      await recordService.addDiaper({
+      const payload = {
         babyId: currentBabyId,
         type: diaperType,
         time: `${todayString()} ${timeValue}:00`,
+      }
+      if (isEdit) {
+        await recordService.update('diaper', editingId, payload)
+      } else {
+        await recordService.addDiaper(payload)
+      }
+      this.setData({ showDiaper: false, editingId: null, editingKind: '' })
+      wx.showToast({
+        title: isEdit ? '已保存修改' : `已记录${labelMap[diaperType]}`,
+        icon: 'none',
       })
-      this.setData({ showDiaper: false })
-      wx.showToast({ title: `已记录${labelMap[diaperType]}`, icon: 'none' })
       await this.loadRecords()
     } catch (err) {
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })
@@ -331,6 +378,8 @@ Page({
     if (!this.checkBaby()) return
     this.setData({
       showExercise: true,
+      editingId: null,
+      editingKind: '',
       exerciseDuration: 5,
       exerciseResult: 0,
       timeValue: currentHM(),
@@ -357,16 +406,26 @@ Page({
       return
     }
 
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
     this.setData({ submitting: true })
     try {
-      await recordService.addExercise({
+      const payload = {
         babyId: currentBabyId,
         duration: exerciseDuration,
         result: exerciseResult,
         time: `${todayString()} ${timeValue}:00`,
+      }
+      if (isEdit) {
+        await recordService.update('exercise', editingId, payload)
+      } else {
+        await recordService.addExercise(payload)
+      }
+      this.setData({ showExercise: false, editingId: null, editingKind: '' })
+      wx.showToast({
+        title: isEdit ? '已保存修改' : `已记录 ${exerciseDuration}分钟`,
+        icon: 'none',
       })
-      this.setData({ showExercise: false })
-      wx.showToast({ title: `已记录 ${exerciseDuration}分钟`, icon: 'none' })
       await this.loadRecords()
     } catch (err) {
       console.error('[record] submitExercise 失败:', err)
@@ -386,6 +445,8 @@ Page({
 
     this.setData({
       showGrowth: true,
+      editingId: null,
+      editingKind: '',
       // 带出上次数值，方便对比着微调
       height: g && g.height !== null && g.height !== undefined ? String(g.height) : '',
       weight: g && g.weight !== null && g.weight !== undefined ? String(g.weight) : '',
@@ -424,20 +485,30 @@ Page({
       return
     }
 
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
     this.setData({ submitting: true })
     try {
-      await recordService.addGrowth({
+      const payload = {
         babyId: currentBabyId,
         height: h,
         weight: w,
         time: `${todayString()} ${timeValue}:00`,
-      })
-      this.setData({ showGrowth: false })
+      }
+      if (isEdit) {
+        await recordService.update('growth', editingId, payload)
+      } else {
+        await recordService.addGrowth(payload)
+      }
+      this.setData({ showGrowth: false, editingId: null, editingKind: '' })
 
       const parts = []
       if (h !== null) parts.push(`${h}cm`)
       if (w !== null) parts.push(`${w}kg`)
-      wx.showToast({ title: `已记录 ${parts.join(' · ')}`, icon: 'none' })
+      wx.showToast({
+        title: isEdit ? '已保存修改' : `已记录 ${parts.join(' · ')}`,
+        icon: 'none',
+      })
       await this.loadRecords()
     } catch (err) {
       console.error('[record] submitGrowth 失败:', err)
@@ -454,6 +525,8 @@ Page({
     if (!this.checkBaby()) return
     this.setData({
       showTemperature: true,
+      editingId: null,
+      editingKind: '',
       temperature: 36.8,
       customTemperature: '',
       tempMethod: 'ear',
@@ -486,22 +559,156 @@ Page({
       return
     }
 
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
     this.setData({ submitting: true })
     try {
-      await recordService.addTemperature({
+      const payload = {
         babyId: currentBabyId,
         temperature: t,
         method: tempMethod,
         time: `${todayString()} ${timeValue}:00`,
-      })
-      this.setData({ showTemperature: false })
+      }
+      if (isEdit) {
+        await recordService.update('temperature', editingId, payload)
+      } else {
+        await recordService.addTemperature(payload)
+      }
+      this.setData({ showTemperature: false, editingId: null, editingKind: '' })
       wx.showToast({
-        title: t >= FEVER_THRESHOLD ? `已记录 ${t}℃ · 偏高` : `已记录 ${t}℃`,
+        title: isEdit
+          ? '已保存修改'
+          : t >= FEVER_THRESHOLD
+            ? `已记录 ${t}℃ · 偏高`
+            : `已记录 ${t}℃`,
         icon: 'none',
       })
       await this.loadRecords()
     } catch (err) {
       console.error('[record] submitTemperature 失败:', err)
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  // ============ 吐奶 ============
+
+  openSpitUp() {
+    if (!this.checkBaby()) return
+    this.setData({
+      showSpitUp: true,
+      editingId: null,
+      editingKind: '',
+      spitUpLevel: 1,
+      timeValue: currentHM(),
+    })
+  },
+
+  closeSpitUp() {
+    this.setData({ showSpitUp: false })
+  },
+
+  setSpitUpLevel(e) {
+    this.setData({ spitUpLevel: parseInt(e.currentTarget.dataset.level) })
+  },
+
+  async submitSpitUp() {
+    const { spitUpLevel, timeValue, currentBabyId } = this.data
+
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
+    this.setData({ submitting: true })
+    try {
+      const payload = {
+        babyId: currentBabyId,
+        level: spitUpLevel,
+        time: `${todayString()} ${timeValue}:00`,
+      }
+      if (isEdit) {
+        await recordService.update('spitup', editingId, payload)
+      } else {
+        await recordService.addSpitUp(payload)
+      }
+      this.setData({ showSpitUp: false, editingId: null, editingKind: '' })
+      wx.showToast({
+        title: isEdit ? '已保存修改' : `已记录吐奶 · ${SPIT_UP_TEXT[spitUpLevel]}`,
+        icon: 'none',
+      })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  // ============ 洗澡 ============
+
+  openBath() {
+    if (!this.checkBaby()) return
+    const { stats } = this.data
+    const lastTemp = stats && stats.bath ? stats.bath.lastWaterTemp : null
+
+    this.setData({
+      showBath: true,
+      editingId: null,
+      editingKind: '',
+      bathDuration: 10,
+      // 带上次的洗澡水温，一般每次都差不多
+      bathWaterTemp: lastTemp !== null && lastTemp !== undefined ? String(lastTemp) : '',
+      timeValue: currentHM(),
+    })
+  },
+
+  closeBath() {
+    this.setData({ showBath: false })
+  },
+
+  setBathDuration(e) {
+    this.setData({ bathDuration: parseInt(e.currentTarget.dataset.value) })
+  },
+
+  onBathTempInput(e) {
+    this.setData({ bathWaterTemp: e.detail.value })
+  },
+
+  async submitBath() {
+    const { bathDuration, bathWaterTemp, timeValue, currentBabyId } = this.data
+
+    const temp = bathWaterTemp === '' ? null : parseFloat(bathWaterTemp)
+    if (temp !== null && (isNaN(temp) || temp < 20 || temp > 45)) {
+      wx.showToast({ title: '水温请填 20~45 ℃', icon: 'none' })
+      return
+    }
+
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
+    this.setData({ submitting: true })
+    try {
+      const payload = {
+        babyId: currentBabyId,
+        // 0 表示「不记时长」，后端存 null
+        duration: bathDuration > 0 ? bathDuration : null,
+        waterTemp: temp,
+        time: `${todayString()} ${timeValue}:00`,
+      }
+      if (isEdit) {
+        await recordService.update('bath', editingId, payload)
+      } else {
+        await recordService.addBath(payload)
+      }
+      this.setData({ showBath: false, editingId: null, editingKind: '' })
+      wx.showToast({
+        title: isEdit
+          ? '已保存修改'
+          : bathDuration > 0
+            ? `已记录洗澡 ${bathDuration}分钟`
+            : '已记录洗澡',
+        icon: 'none',
+      })
+      await this.loadRecords()
+    } catch (err) {
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })
     } finally {
       this.setData({ submitting: false })
@@ -540,6 +747,161 @@ Page({
       await this.loadRecords()
     } catch (err) {
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    }
+  },
+
+  // ============ 编辑记录 ============
+
+  /**
+   * 点时间线某条记录 → 打开对应弹窗并预填
+   * 睡眠单独用 showSleepEdit（只有起止时间两个 picker）
+   */
+  onEditRecord(e) {
+    const { kind, id } = e.currentTarget.dataset
+    const item = (this.data.list || []).find(
+      (r) => r.kind === kind && String(r.id) === String(id)
+    )
+    if (!item) return
+
+    const hm = item.timeText || currentHM()
+
+    if (kind === 'sleep') {
+      const parts = String(item.subtitle || '').split('→')
+      this.setData({
+        showSleepEdit: true,
+        editingId: id,
+        editingKind: kind,
+        sleepStart: (parts[0] || hm).trim(),
+        sleepEnd: (parts[1] || hm).trim(),
+      })
+      return
+    }
+
+    switch (kind) {
+      case 'feeding':
+        this.setData({
+          showFeeding: true,
+          editingId: id,
+          editingKind: kind,
+          feedingType: item.type,
+          amount: item.type === 'formula' ? item.amount : 120,
+          customAmount: '',
+          duration: item.type === 'breast' ? item.duration : 20,
+          timeValue: hm,
+        })
+        break
+      case 'diaper':
+        this.setData({
+          showDiaper: true,
+          editingId: id,
+          editingKind: kind,
+          diaperType: item.type,
+          timeValue: hm,
+        })
+        break
+      case 'exercise':
+        this.setData({
+          showExercise: true,
+          editingId: id,
+          editingKind: kind,
+          exerciseDuration: item.duration || 5,
+          exerciseResult: item.result || 0,
+          timeValue: hm,
+        })
+        break
+      case 'growth':
+        this.setData({
+          showGrowth: true,
+          editingId: id,
+          editingKind: kind,
+          height: item.height !== null && item.height !== undefined ? String(item.height) : '',
+          weight: item.weight !== null && item.weight !== undefined ? String(item.weight) : '',
+          timeValue: hm,
+        })
+        break
+      case 'temperature':
+        this.setData({
+          showTemperature: true,
+          editingId: id,
+          editingKind: kind,
+          temperature: item.temperature,
+          customTemperature: '',
+          tempMethod: item.method || 'ear',
+          timeValue: hm,
+        })
+        break
+      case 'spitup':
+        this.setData({
+          showSpitUp: true,
+          editingId: id,
+          editingKind: kind,
+          spitUpLevel: item.level || 1,
+          timeValue: hm,
+        })
+        break
+      case 'bath':
+        this.setData({
+          showBath: true,
+          editingId: id,
+          editingKind: kind,
+          bathDuration: item.duration || 0,
+          bathWaterTemp:
+            item.waterTemp !== null && item.waterTemp !== undefined
+              ? String(item.waterTemp)
+              : '',
+          timeValue: hm,
+        })
+        break
+      default:
+        break
+    }
+  },
+
+  // ============ 睡眠编辑 ============
+
+  closeSleepEdit() {
+    this.setData({ showSleepEdit: false, editingId: null, editingKind: '' })
+  },
+
+  onSleepStartChange(e) {
+    this.setData({ sleepStart: e.detail.value })
+  },
+
+  onSleepEndChange(e) {
+    this.setData({ sleepEnd: e.detail.value })
+  },
+
+  async submitSleepEdit() {
+    const { sleepStart, sleepEnd, editingId } = this.data
+    if (!sleepStart || !sleepEnd) {
+      wx.showToast({ title: '请选择起止时间', icon: 'none' })
+      return
+    }
+
+    const today = todayString()
+    const start = `${today} ${sleepStart}:00`
+    let end = `${today} ${sleepEnd}:00`
+
+    // 结束时间不晚于开始时间 → 视为跨天，落到第二天
+    if (sleepEnd <= sleepStart) {
+      const d = new Date(`${today} 00:00:00`.replace(/-/g, '/'))
+      d.setDate(d.getDate() + 1)
+      const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate()
+      ).padStart(2, '0')}`
+      end = `${next} ${sleepEnd}:00`
+    }
+
+    this.setData({ submitting: true })
+    try {
+      await recordService.update('sleep', editingId, { startTime: start, endTime: end })
+      this.setData({ showSleepEdit: false, editingId: null, editingKind: '' })
+      wx.showToast({ title: '已保存修改', icon: 'none' })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '保存失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
     }
   },
 

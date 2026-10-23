@@ -18,10 +18,10 @@ const isDev =
 const config = {
   dev: {
     // 走 Nginx 对外端口（docker-compose 里的 NGINX_PORT，默认 8080）
-    baseUrl: 'http://localhost:8080/api',
+    baseUrl: 'http://didi.grindsword.top/api',
   },
   prod: {
-    baseUrl: 'https://your-domain.com/api',
+    baseUrl: 'http://didi.grindsword.top/api',
   },
 }
 

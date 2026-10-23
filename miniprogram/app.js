@@ -31,8 +31,9 @@ App({
       // 忽略：部分环境取不到
     }
 
-    // 静默登录
-    this.silentLogin()
+    // 首次登录由 pages/login 引导（微信一键登录）；
+    // 这里不再自动静默登录，避免和登录页重复。
+    // silentLogin 仍保留，供 401 时自动续期使用。
   },
 
   onShow() {
@@ -83,5 +84,13 @@ App({
         },
       })
     })
+  },
+
+  /** 退出登录：清掉 token，回到登录页 */
+  logout() {
+    wx.removeStorageSync('access_token')
+    this.globalData.userId = null
+    this.globalData.isLogin = false
+    wx.reLaunch({ url: '/pages/login/login' })
   },
 })

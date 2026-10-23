@@ -1,0 +1,29 @@
+<view class="login-page">
+  <view class="login-logo">👶</view>
+  <view class="login-title">橙猪宝宝记</view>
+  <view class="login-sub">记录宝宝每一天的吃喝睡，家人一起看</view>
+
+  <view class="login-features">
+    <view class="feature">
+      <text class="feature-icon">🍼</text>
+      <text class="feature-text">一键记录喂养、睡眠、换尿片</text>
+    </view>
+    <view class="feature">
+      <text class="feature-icon">👨‍👩‍👧</text>
+      <text class="feature-text">分享给家人，一起记录一起看</text>
+    </view>
+    <view class="feature">
+      <text class="feature-icon">⭐</text>
+      <text class="feature-text">每日养育评分，看看今天带得怎么样</text>
+    </view>
+  </view>
+
+  <view class="login-actions">
+    <button class="login-btn" loading="{{logging}}" bindtap="onLogin">微信一键登录</button>
+
+    <view class="agree-row" bindtap="toggleAgree">
+      <view class="agree-box {{agreed ? 'agree-on' : ''}}">{{agreed ? '✓' : ''}}</view>
+      <text class="agree-text">已阅读并同意《用户协议》和《隐私政策》</text>
+    </view>
+  </view>
+</view>

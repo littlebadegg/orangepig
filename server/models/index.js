@@ -116,6 +116,12 @@ const Baby = sequelize.define('Baby', {
     defaultValue: '',
     field: 'avatar_url',
   },
+  // 邀请码：家人凭此码加入，一起记录这个宝宝
+  inviteCode: {
+    type: DataTypes.STRING(8),
+    allowNull: true,
+    field: 'invite_code',
+  },
   status: {
     type: DataTypes.TINYINT,
     defaultValue: 1,
@@ -124,6 +130,50 @@ const Baby = sequelize.define('Baby', {
   tableName: 'babies',
   indexes: [
     { fields: ['user_id'] },
+    { fields: ['invite_code'] },
+  ],
+})
+
+/**
+ * 宝宝家庭成员
+ * 创建者是 owner，被邀请进来的是 member，两边都能记录和查看
+ */
+const BabyMember = sequelize.define('BabyMember', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // owner 创建者（可改资料/删宝宝/管成员） | member 被邀请的家人
+  role: {
+    type: DataTypes.ENUM('owner', 'member'),
+    defaultValue: 'member',
+  },
+  // 和宝宝的关系称呼：妈妈 / 爸爸 / 奶奶 …，时间线里显示「谁记的」
+  relation: {
+    type: DataTypes.STRING(20),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'baby_members',
+  indexes: [
+    { fields: ['baby_id'] },
+    { fields: ['user_id'] },
+    { fields: ['baby_id', 'user_id'] },
   ],
 })
 
@@ -427,6 +477,99 @@ const TemperatureRecord = sequelize.define('TemperatureRecord', {
   ],
 })
 
+/**
+ * 吐奶记录
+ * level: 1 少量 / 2 中量 / 3 大量
+ */
+const SpitUpRecord = sequelize.define('SpitUpRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 吐奶量：1 少量（一口）/ 2 中量 / 3 大量
+  level: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'spit_up_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
+/**
+ * 洗澡记录
+ */
+const BathRecord = sequelize.define('BathRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 洗澡时长（分钟），可以只记「洗了」不记时长
+  duration: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+  },
+  // 水温（℃），选填
+  waterTemp: {
+    type: DataTypes.DECIMAL(3, 1),
+    allowNull: true,
+    field: 'water_temp',
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'bath_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
 // ============ 模型关联 ============
 
 // 用户 → 宝宝（一对多）
@@ -452,6 +595,18 @@ GrowthRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 Baby.hasMany(TemperatureRecord, { foreignKey: 'babyId', as: 'temperatures' })
 TemperatureRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 
+Baby.hasMany(SpitUpRecord, { foreignKey: 'babyId', as: 'spitUps' })
+SpitUpRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
+Baby.hasMany(BathRecord, { foreignKey: 'babyId', as: 'baths' })
+BathRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
+// 宝宝 ↔ 家庭成员（多对多中间表）
+Baby.hasMany(BabyMember, { foreignKey: 'babyId', as: 'members' })
+BabyMember.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+User.hasMany(BabyMember, { foreignKey: 'userId', as: 'babyMembers' })
+BabyMember.belongsTo(User, { foreignKey: 'userId', as: 'user' })
+
 // 用户 → 各类记录（一对多，便于按用户维度查询/清理）
 User.hasMany(FeedingRecord, { foreignKey: 'userId', as: 'feedings' })
 User.hasMany(DiaperRecord, { foreignKey: 'userId', as: 'diapers' })
@@ -459,16 +614,21 @@ User.hasMany(SleepRecord, { foreignKey: 'userId', as: 'sleeps' })
 User.hasMany(ExerciseRecord, { foreignKey: 'userId', as: 'exercises' })
 User.hasMany(GrowthRecord, { foreignKey: 'userId', as: 'growths' })
 User.hasMany(TemperatureRecord, { foreignKey: 'userId', as: 'temperatures' })
+User.hasMany(SpitUpRecord, { foreignKey: 'userId', as: 'spitUps' })
+User.hasMany(BathRecord, { foreignKey: 'userId', as: 'baths' })
 
 module.exports = {
   sequelize,
   Sequelize,
   User,
   Baby,
+  BabyMember,
   FeedingRecord,
   DiaperRecord,
   SleepRecord,
   ExerciseRecord,
   GrowthRecord,
   TemperatureRecord,
+  SpitUpRecord,
+  BathRecord,
 }

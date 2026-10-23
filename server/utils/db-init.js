@@ -15,12 +15,15 @@ const {
   sequelize,
   User,
   Baby,
+  BabyMember,
   FeedingRecord,
   DiaperRecord,
   SleepRecord,
   ExerciseRecord,
   GrowthRecord,
   TemperatureRecord,
+  SpitUpRecord,
+  BathRecord,
 } = require('../models')
 
 /** 连接 MySQL 实例（不指定库名）创建数据库 */
@@ -57,6 +60,35 @@ async function dropLegacyTables() {
   }
 }
 
+/**
+ * 老数据补齐：
+ * 1. 没有邀请码的宝宝生成邀请码
+ * 2. 没有 owner 成员记录的宝宝补一条（共享功能上线前创建的宝宝）
+ */
+async function backfillSharing() {
+  const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const randCode = () =>
+    Array.from({ length: 6 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
+
+  const babies = await Baby.findAll({ where: { status: 1 }, raw: true })
+  for (const baby of babies) {
+    if (!baby.inviteCode) {
+      await Baby.update({ inviteCode: randCode() }, { where: { id: baby.id } })
+    }
+    const ownerMember = await BabyMember.findOne({
+      where: { babyId: baby.id, userId: baby.userId, status: 1 },
+    })
+    if (!ownerMember) {
+      await BabyMember.create({
+        babyId: baby.id,
+        userId: baby.userId,
+        role: 'owner',
+        relation: '',
+      })
+    }
+  }
+}
+
 /** 插入演示数据（仅在首次运行时） */
 async function seed() {
   const babyCount = await Baby.count()
@@ -75,8 +107,16 @@ async function seed() {
     name: '小橙子',
     gender: 1,
     birthday: '2026-02-10',
+    inviteCode: 'DEMO66',
   })
   await User.update({ currentBabyId: baby.id }, { where: { id: user.id } })
+
+  await BabyMember.create({
+    babyId: baby.id,
+    userId: user.id,
+    role: 'owner',
+    relation: '妈妈',
+  })
 
   const now = new Date()
   const at = (h, m) =>
@@ -125,6 +165,21 @@ async function seed() {
     { babyId: baby.id, userId: user.id, temperature: 37.0, method: 'ear', time: at(19, 0) },
   ])
 
+  await SpitUpRecord.bulkCreate([
+    { babyId: baby.id, userId: user.id, level: 1, time: at(10, 5) },
+    { babyId: baby.id, userId: user.id, level: 2, time: at(16, 30) },
+  ])
+
+  await BathRecord.bulkCreate([
+    {
+      babyId: baby.id,
+      userId: user.id,
+      duration: 10,
+      waterTemp: 38.0,
+      time: at(18, 30),
+    },
+  ])
+
   // 身高体重测得少，给两条不同日期的，方便看「最近一次」
   const daysAgo = (n) =>
     new Date(now.getFullYear(), now.getMonth(), now.getDate() - n, 10, 0, 0)
@@ -165,6 +220,8 @@ async function initDatabase(opts = {}) {
   // alter: true — 补齐旧表新增列（如 users.current_baby_id）
   await sequelize.sync({ alter: true })
   console.log('[DB] 数据表已同步')
+
+  await backfillSharing()
 
   if (seedDemo) {
     await seed()

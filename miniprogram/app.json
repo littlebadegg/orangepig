@@ -1,8 +1,10 @@
 {
   "pages": [
+    "pages/login/login",
     "pages/record/record",
     "pages/stats/stats",
-    "pages/mine/mine"
+    "pages/mine/mine",
+    "pages/invite/invite"
   ],
   "window": {
     "backgroundTextStyle": "light",

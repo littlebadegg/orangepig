@@ -1,0 +1,56 @@
+/* 邀请接收页 */
+.page {
+  padding: 24rpx;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 0 40rpx;
+}
+
+.hero-icon {
+  font-size: 120rpx;
+}
+
+.center-card {
+  text-align: center;
+}
+
+.inviter {
+  display: block;
+  text-align: center;
+  font-size: 28rpx;
+  color: #888;
+}
+
+.baby-name {
+  display: block;
+  text-align: center;
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #222;
+  margin: 12rpx 0 28rpx;
+}
+
+.hint {
+  display: block;
+  font-size: 28rpx;
+  color: #888;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.hint.error {
+  color: #e34d59;
+}
+
+.tip {
+  display: block;
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  color: #aaa;
+  text-align: center;
+  line-height: 1.6;
+}

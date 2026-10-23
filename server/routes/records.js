@@ -10,8 +10,9 @@
  * POST   /api/records/growth       — 记一次身高 / 体重
  * POST   /api/records/temperature  — 记一次体温
  * GET    /api/records/timeline     — 某天的时间线（默认今天）
+ * PUT    /api/records/:type/:id    — 修改记录
  * DELETE /api/records/:type/:id    — 删除记录
- *        type: feeding|diaper|sleep|exercise|growth|temperature
+ *        type: feeding|diaper|sleep|exercise|growth|temperature|spitup|bath
  */
 const express = require('express')
 const { Op } = require('sequelize')
@@ -25,6 +26,8 @@ const {
   ExerciseRecord,
   GrowthRecord,
   TemperatureRecord,
+  SpitUpRecord,
+  BathRecord,
 } = require('../models')
 const {
   formatDateTime,
@@ -37,7 +40,7 @@ const {
   safeDate,
 } = require('../utils/time')
 
-const { resolveBaby } = require('../utils/baby')
+const { resolveBaby, buildRecorderMap, isBabyOwner, findOwnBaby } = require('../utils/baby')
 
 // ============ 展示文案 ============
 const DIAPER_LABEL = { pee: '小便', poo: '大便', both: '大小便' }
@@ -50,6 +53,8 @@ const TEMP_METHOD_LABEL = {
   armpit: '腋温',
   oral: '口温',
 }
+// 吐奶量：1 少量 / 2 中量 / 3 大量
+const SPIT_UP_LABEL = { 1: '少量', 2: '中量', 3: '大量' }
 
 /**
  * 解析时间：前端传 "YYYY-MM-DD HH:mm:ss"，缺省取当前时间
@@ -461,6 +466,97 @@ router.post('/temperature', auth, async (req, res, next) => {
   }
 })
 
+// ============ 吐奶记录 ============
+
+/**
+ * 记一次吐奶
+ * body: { babyId, level(1少量|2中量|3大量), time, note }
+ */
+router.post('/spitup', auth, async (req, res, next) => {
+  try {
+    const { note } = req.body
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const rawLevel = parseInt(req.body.level)
+    const level = [1, 2, 3].includes(rawLevel) ? rawLevel : 1
+    const time = parseTime(req.body.time)
+
+    const record = await SpitUpRecord.create({
+      babyId: baby.id,
+      userId: req.userId,
+      level,
+      time,
+      note: note || '',
+    })
+
+    res.apiSuccess({
+      id: record.id,
+      level: record.level,
+      levelText: SPIT_UP_LABEL[record.level] || '',
+      timeText: formatTime(record.time),
+      timeFull: formatDateTime(record.time),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ============ 洗澡记录 ============
+
+/**
+ * 记一次洗澡
+ * body: { babyId, duration(分钟,选填), waterTemp(℃,选填), time, note }
+ */
+router.post('/bath', auth, async (req, res, next) => {
+  try {
+    const { note } = req.body
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    // 时长选填：不传 / 传空 / 传 null 都表示「只记洗了，不记多久」
+    const rawDuration = req.body.duration
+    const duration =
+      rawDuration !== undefined && rawDuration !== null && rawDuration !== ''
+        ? parseInt(rawDuration)
+        : null
+    if (duration !== null && (isNaN(duration) || duration <= 0 || duration > 120)) {
+      return res.apiError('洗澡时长请填写 1~120 之间的数值（分钟）', 400, 400)
+    }
+
+    const waterTemp = toNum(req.body.waterTemp)
+    if (waterTemp !== null && (waterTemp < 20 || waterTemp > 45)) {
+      return res.apiError('水温请填写 20~45 之间的数值（℃）', 400, 400)
+    }
+
+    const time = parseTime(req.body.time)
+
+    const record = await BathRecord.create({
+      babyId: baby.id,
+      userId: req.userId,
+      duration,
+      waterTemp,
+      time,
+      note: note || '',
+    })
+
+    res.apiSuccess({
+      id: record.id,
+      duration: record.duration,
+      durationText: record.duration ? formatDuration(record.duration) : '',
+      waterTemp: toNum(record.waterTemp),
+      timeText: formatTime(record.time),
+      timeFull: formatDateTime(record.time),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ============ 时间线 ============
 
 /**
@@ -478,39 +574,53 @@ router.get('/timeline', auth, async (req, res, next) => {
     const from = startOfDay(day)
     const to = endOfDay(day)
 
-    const [feedings, diapers, sleeps, exercises, growths, temperatures] = await Promise.all([
-      FeedingRecord.findAll({
-        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
-        raw: true,
-      }),
-      DiaperRecord.findAll({
-        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
-        raw: true,
-      }),
-      SleepRecord.findAll({
-        where: {
-          babyId: baby.id,
-          startTime: { [Op.between]: [from, to] },
-          recordStatus: 1,
-          status: 1,
-        },
-        raw: true,
-      }),
-      ExerciseRecord.findAll({
-        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
-        raw: true,
-      }),
-      GrowthRecord.findAll({
-        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
-        raw: true,
-      }),
-      TemperatureRecord.findAll({
-        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
-        raw: true,
-      }),
-    ])
+    const [feedings, diapers, sleeps, exercises, growths, temperatures, spitUps, baths, recorderMap] =
+      await Promise.all([
+        FeedingRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        DiaperRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        SleepRecord.findAll({
+          where: {
+            babyId: baby.id,
+            startTime: { [Op.between]: [from, to] },
+            recordStatus: 1,
+            status: 1,
+          },
+          raw: true,
+        }),
+        ExerciseRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        GrowthRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        TemperatureRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        SpitUpRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        BathRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        // 谁记的 —— 家人一起记的时候能看出这条是谁录的
+        buildRecorderMap(baby.id),
+      ])
 
     const list = []
+
+    // 记录人昵称：家人一起记的时候能看出这条是谁录的
+    const recorder = (r) => recorderMap[r.userId] || ''
 
     feedings.forEach((r) => {
       const t = new Date(r.time).getTime()
@@ -524,6 +634,7 @@ router.get('/timeline', auth, async (req, res, next) => {
         amount: r.amount,
         duration: r.duration,
         note: r.note || '',
+        recorder: recorder(r),
         timeText: formatTime(r.time),
         timeFull: formatDateTime(r.time),
         sortKey: t,
@@ -540,6 +651,7 @@ router.get('/timeline', auth, async (req, res, next) => {
         title: DIAPER_LABEL[r.type] || '换尿片',
         subtitle: '换尿片',
         note: r.note || '',
+        recorder: recorder(r),
         timeText: formatTime(r.time),
         timeFull: formatDateTime(r.time),
         sortKey: t,
@@ -557,6 +669,7 @@ router.get('/timeline', auth, async (req, res, next) => {
         duration: r.duration,
         durationText: formatDuration(r.duration),
         note: r.note || '',
+        recorder: recorder(r),
         timeText: formatTime(r.startTime),
         timeFull: formatDateTime(r.startTime),
         sortKey: t,
@@ -575,6 +688,7 @@ router.get('/timeline', auth, async (req, res, next) => {
         duration: r.duration,
         result: r.result,
         note: r.note || '',
+        recorder: recorder(r),
         timeText: formatTime(r.time),
         timeFull: formatDateTime(r.time),
         sortKey: t,
@@ -597,6 +711,7 @@ router.get('/timeline', auth, async (req, res, next) => {
         height,
         weight,
         note: r.note || '',
+        recorder: recorder(r),
         timeText: formatTime(r.time),
         timeFull: formatDateTime(r.time),
         sortKey: t,
@@ -617,6 +732,47 @@ router.get('/timeline', auth, async (req, res, next) => {
         method: r.method,
         isFever,
         note: r.note || '',
+        recorder: recorder(r),
+        timeText: formatTime(r.time),
+        timeFull: formatDateTime(r.time),
+        sortKey: t,
+      })
+    })
+
+    spitUps.forEach((r) => {
+      const t = new Date(r.time).getTime()
+      const levelText = SPIT_UP_LABEL[r.level] || '少量'
+      list.push({
+        id: r.id,
+        kind: 'spitup',
+        icon: '🤮',
+        title: `吐奶 · ${levelText}`,
+        subtitle: '吐奶',
+        level: r.level,
+        note: r.note || '',
+        recorder: recorder(r),
+        timeText: formatTime(r.time),
+        timeFull: formatDateTime(r.time),
+        sortKey: t,
+      })
+    })
+
+    baths.forEach((r) => {
+      const t = new Date(r.time).getTime()
+      const temp = toNum(r.waterTemp)
+      const parts = []
+      if (r.duration) parts.push(`${r.duration}分钟`)
+      if (temp !== null) parts.push(`${temp}℃`)
+      list.push({
+        id: r.id,
+        kind: 'bath',
+        icon: '🛁',
+        title: `洗澡${parts.length > 0 ? ' · ' + parts.join(' · ') : ''}`,
+        subtitle: '洗澡',
+        duration: r.duration,
+        waterTemp: temp,
+        note: r.note || '',
+        recorder: recorder(r),
         timeText: formatTime(r.time),
         timeFull: formatDateTime(r.time),
         sortKey: t,
@@ -650,6 +806,200 @@ router.get('/timeline', auth, async (req, res, next) => {
   }
 })
 
+// ============ 修改 ============
+
+/**
+ * 修改记录
+ * PUT /api/records/:type/:id
+ * body 里只传需要改的字段；校验规则与创建时保持一致
+ */
+router.put('/:type/:id', auth, async (req, res, next) => {
+  try {
+    const { type, id } = req.params
+    const modelMap = {
+      feeding: FeedingRecord,
+      diaper: DiaperRecord,
+      sleep: SleepRecord,
+      exercise: ExerciseRecord,
+      growth: GrowthRecord,
+      temperature: TemperatureRecord,
+      spitup: SpitUpRecord,
+      bath: BathRecord,
+    }
+    const Model = modelMap[type]
+    if (!Model) {
+      return res.apiError('记录类型不正确', 400, 400)
+    }
+
+    const record = await Model.findOne({ where: { id, status: 1 } })
+    if (!record) {
+      return res.apiError('记录不存在', 404, 404)
+    }
+
+    // 权限与删除一致：创建者能改整只宝宝，家人只能改自己记的
+    const baby = await findOwnBaby(record.babyId, req.userId)
+    if (!baby) {
+      return res.apiError('记录不存在', 404, 404)
+    }
+    const owner = await isBabyOwner(record.babyId, req.userId)
+    if (record.userId !== req.userId && !owner) {
+      return res.apiError('家人只能修改自己记录的内容', 403, 403)
+    }
+
+    const body = req.body || {}
+    const patch = {}
+
+    // 备注通用
+    if (body.note !== undefined) {
+      patch.note = String(body.note || '').slice(0, 200)
+    }
+
+    switch (type) {
+      case 'feeding': {
+        const feedType =
+          body.type === 'breast' || body.type === 'formula' ? body.type : record.type
+        patch.type = feedType
+        if (feedType === 'formula') {
+          const amount =
+            body.amount !== undefined && body.amount !== ''
+              ? parseInt(body.amount)
+              : parseInt(record.amount)
+          if (!amount || amount <= 0 || amount > 2000) {
+            return res.apiError('请输入奶量（毫升）', 400, 400)
+          }
+          patch.amount = amount
+          patch.duration = null
+        } else {
+          const duration =
+            body.duration !== undefined && body.duration !== ''
+              ? parseInt(body.duration)
+              : parseInt(record.duration)
+          if (!duration || duration <= 0 || duration > 180) {
+            return res.apiError('请输入喂奶时长（分钟）', 400, 400)
+          }
+          patch.duration = duration
+          patch.amount = null
+        }
+        break
+      }
+
+      case 'diaper': {
+        patch.type = ['pee', 'poo', 'both'].includes(body.type) ? body.type : record.type
+        break
+      }
+
+      case 'exercise': {
+        const duration =
+          body.duration !== undefined && body.duration !== ''
+            ? parseInt(body.duration)
+            : parseInt(record.duration)
+        if (!duration || duration <= 0 || duration > 120) {
+          return res.apiError('请选择做操时长', 400, 400)
+        }
+        patch.duration = duration
+        if (body.result !== undefined) {
+          const raw = parseInt(body.result)
+          patch.result = [1, 2].includes(raw) ? raw : 0
+        }
+        break
+      }
+
+      case 'growth': {
+        const height = body.height !== undefined ? toNum(body.height) : toNum(record.height)
+        const weight = body.weight !== undefined ? toNum(body.weight) : toNum(record.weight)
+        if (height === null && weight === null) {
+          return res.apiError('请至少填写身高或体重', 400, 400)
+        }
+        if (height !== null && (height <= 0 || height > 120)) {
+          return res.apiError('身高请填写 1~120 之间的数值（cm）', 400, 400)
+        }
+        if (weight !== null && (weight <= 0 || weight > 30)) {
+          return res.apiError('体重请填写 0.5~30 之间的数值（kg）', 400, 400)
+        }
+        patch.height = height
+        patch.weight = weight
+        break
+      }
+
+      case 'temperature': {
+        const temp =
+          body.temperature !== undefined && body.temperature !== ''
+            ? toNum(body.temperature)
+            : toNum(record.temperature)
+        if (temp === null || temp < 35 || temp > 43) {
+          return res.apiError('体温请填写 35~43 之间的数值（℃）', 400, 400)
+        }
+        patch.temperature = temp
+        if (body.method !== undefined) {
+          patch.method = Object.keys(TEMP_METHOD_LABEL).includes(body.method)
+            ? body.method
+            : record.method
+        }
+        break
+      }
+
+      case 'spitup': {
+        const raw = parseInt(body.level)
+        patch.level = [1, 2, 3].includes(raw) ? raw : record.level
+        break
+      }
+
+      case 'bath': {
+        if (body.duration !== undefined) {
+          const raw = body.duration
+          if (raw === null || raw === '' || parseInt(raw) === 0) {
+            patch.duration = null
+          } else {
+            const d = parseInt(raw)
+            if (isNaN(d) || d <= 0 || d > 120) {
+              return res.apiError('洗澡时长请填写 1~120 之间的数值（分钟）', 400, 400)
+            }
+            patch.duration = d
+          }
+        }
+        if (body.waterTemp !== undefined) {
+          const w = toNum(body.waterTemp)
+          if (w !== null && (w < 20 || w > 45)) {
+            return res.apiError('水温请填写 20~45 之间的数值（℃）', 400, 400)
+          }
+          patch.waterTemp = w
+        }
+        break
+      }
+
+      case 'sleep': {
+        const start = body.startTime ? parseTime(body.startTime) : new Date(record.startTime)
+        const end = body.endTime
+          ? parseTime(body.endTime)
+          : record.endTime
+            ? new Date(record.endTime)
+            : new Date()
+        if (end.getTime() <= start.getTime()) {
+          return res.apiError('起床时间要晚于入睡时间', 400, 400)
+        }
+        patch.startTime = start
+        patch.endTime = end
+        patch.duration = diffMinutes(start, end)
+        patch.recordStatus = 1
+        break
+      }
+
+      default:
+        return res.apiError('记录类型不正确', 400, 400)
+    }
+
+    // 除睡眠外，统一 time 字段
+    if (type !== 'sleep' && body.time !== undefined && body.time !== '') {
+      patch.time = parseTime(body.time)
+    }
+
+    await record.update(patch)
+    res.apiSuccess({ id: record.id, kind: type })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ============ 删除 ============
 
 /**
@@ -666,15 +1016,29 @@ router.delete('/:type/:id', auth, async (req, res, next) => {
       exercise: ExerciseRecord,
       growth: GrowthRecord,
       temperature: TemperatureRecord,
+      spitup: SpitUpRecord,
+      bath: BathRecord,
     }
     const Model = modelMap[type]
     if (!Model) {
       return res.apiError('记录类型不正确', 400, 400)
     }
 
-    const record = await Model.findOne({ where: { id, userId: req.userId, status: 1 } })
+    const record = await Model.findOne({ where: { id, status: 1 } })
     if (!record) {
       return res.apiError('记录不存在', 404, 404)
+    }
+
+    // 得先确认这个宝宝跟自己有关系
+    const baby = await findOwnBaby(record.babyId, req.userId)
+    if (!baby) {
+      return res.apiError('记录不存在', 404, 404)
+    }
+
+    // 创建者能删宝宝的全部记录；被邀请的家人只能删自己记的那条
+    const owner = await isBabyOwner(record.babyId, req.userId)
+    if (record.userId !== req.userId && !owner) {
+      return res.apiError('家人只能删除自己记录的内容', 403, 403)
     }
 
     await record.update({ status: 0 })

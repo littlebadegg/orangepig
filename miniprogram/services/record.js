@@ -1,7 +1,7 @@
 /**
  * 记录 + 统计接口
  */
-const { get, post, del } = require('../utils/request')
+const { get, post, put, del } = require('../utils/request')
 
 /** 记一次喂养 { babyId, type, amount, duration, time, note } */
 function addFeeding(data) {
@@ -43,14 +43,29 @@ function addTemperature(data) {
   return post('/records/temperature', data)
 }
 
+/** 记一次吐奶 { babyId, level(1少量|2中量|3大量), time, note } */
+function addSpitUp(data) {
+  return post('/records/spitup', data)
+}
+
+/** 记一次洗澡 { babyId, duration, waterTemp, time, note } */
+function addBath(data) {
+  return post('/records/bath', data)
+}
+
 /** 某天时间线 */
 function timeline(babyId, date) {
   return get('/records/timeline', { babyId, date })
 }
 
-/** 删除记录 type: feeding|diaper|sleep */
+/** 删除记录 type: feeding|diaper|sleep|exercise|growth|temperature|spitup|bath */
 function remove(type, id) {
   return del(`/records/${type}/${id}`)
+}
+
+/** 修改记录（只传需要改的字段） */
+function update(type, id, data) {
+  return put(`/records/${type}/${id}`, data)
 }
 
 /** 某天概览统计 */
@@ -72,8 +87,11 @@ module.exports = {
   addExercise,
   addGrowth,
   addTemperature,
+  addSpitUp,
+  addBath,
   timeline,
   remove,
+  update,
   dailyStats,
   trend,
 }

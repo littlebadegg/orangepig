@@ -1,0 +1,46 @@
+<view class="page">
+
+  <view class="hero">
+    <text class="hero-icon">👶</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="card center-card" wx:if="{{loading}}">
+    <text class="hint">正在确认邀请…</text>
+  </view>
+
+  <!-- 出错 -->
+  <view class="card center-card" wx:elif="{{error}}">
+    <text class="hint error">{{error}}</text>
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="goMine">去我的页面</view>
+  </view>
+
+  <!-- 正常 -->
+  <block wx:else>
+    <view class="card">
+      <text class="inviter">{{inviterName}} 邀请你一起记录</text>
+      <text class="baby-name">{{babyName}}</text>
+
+      <block wx:if="{{isMine}}">
+        <text class="hint">这是你自己创建的宝宝，不用再加入啦。</text>
+        <view class="btn btn-primary btn-block sheet-btn" bindtap="goRecord">去记录</view>
+      </block>
+
+      <block wx:elif="{{alreadyJoined}}">
+        <text class="hint">你已经在家人列表里了，可以一起记录和查看。</text>
+        <view class="btn btn-primary btn-block sheet-btn" bindtap="goRecord">去记录</view>
+      </block>
+
+      <block wx:else>
+        <view class="sheet-label">你是宝宝的</view>
+        <picker mode="selector" range="{{relationOptions}}" value="{{relationIndex}}" bindchange="onRelationChange">
+          <view class="picker">{{relationOptions[relationIndex]}}</view>
+        </picker>
+
+        <view class="btn btn-primary btn-block sheet-btn" bindtap="onJoin">加入，一起记录</view>
+        <text class="tip">加入后你可以记录喂奶、换尿片、睡觉等，和家人的数据实时同步</text>
+      </block>
+    </view>
+  </block>
+
+</view>
