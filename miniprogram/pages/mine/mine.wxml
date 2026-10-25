@@ -68,6 +68,14 @@
       <text class="card-title">账号</text>
       <text class="text-sub">微信登录</text>
     </view>
+    <view class="agree-entry" bindtap="openUserAgreement">
+      <text>用户服务协议</text>
+      <text class="agree-arrow">›</text>
+    </view>
+    <view class="agree-entry" bindtap="openPrivacyAgreement">
+      <text>隐私政策</text>
+      <text class="agree-arrow">›</text>
+    </view>
     <view class="btn btn-block logout-btn" bindtap="onLogout">退出登录</view>
   </view>
 

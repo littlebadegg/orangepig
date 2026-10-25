@@ -301,6 +301,16 @@ Page({
 
   // ============ 账号 ============
 
+  /** 查看《用户服务协议》全文 */
+  openUserAgreement() {
+    wx.navigateTo({ url: '/pages/agreement/agreement?type=user' })
+  },
+
+  /** 查看《隐私政策》全文 */
+  openPrivacyAgreement() {
+    wx.navigateTo({ url: '/pages/agreement/agreement?type=privacy' })
+  },
+
   onLogout() {
     wx.showModal({
       title: '退出登录',

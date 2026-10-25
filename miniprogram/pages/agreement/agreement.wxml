@@ -1,0 +1,9 @@
+<view class="doc-page">
+  <view class="doc-title">{{title}}</view>
+  <view class="doc-updated">更新日期：2026年10月25日</view>
+
+  <view class="doc-section" wx:for="{{sections}}" wx:key="h">
+    <view class="doc-h">{{item.h}}</view>
+    <view class="doc-p" wx:for="{{item.ps}}" wx:for-item="p" wx:key="*this">{{p}}</view>
+  </view>
+</view>

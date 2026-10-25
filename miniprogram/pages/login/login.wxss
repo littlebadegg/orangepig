@@ -81,15 +81,20 @@
   border: none;
 }
 
+.login-btn-disabled {
+  background: #ffbf9e;
+}
+
 .agree-row {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   margin-top: 28rpx;
 }
 
 .agree-box {
+  flex-shrink: 0;
   width: 32rpx;
   height: 32rpx;
   line-height: 32rpx;
@@ -99,7 +104,13 @@
   border: 2rpx solid #ccc;
   border-radius: 50%;
   margin-right: 12rpx;
+  margin-top: 2rpx;
   box-sizing: border-box;
+}
+
+.agree-check {
+  color: #ffffff;
+  font-size: 22rpx;
 }
 
 .agree-on {
@@ -107,7 +118,20 @@
   border-color: #ff7a45;
 }
 
+.agree-text-wrap {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .agree-text {
   font-size: 22rpx;
   color: #999;
+}
+
+.agree-link {
+  font-size: 22rpx;
+  color: #ff7a45;
+  padding: 8rpx 0;
 }
