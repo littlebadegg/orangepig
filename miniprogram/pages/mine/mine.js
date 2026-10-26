@@ -135,8 +135,15 @@ Page({
       if (editingId) {
         await babyService.update(editingId, payload)
         // 称谓也一并保存（补充/修改自己是宝宝的谁）
-        await babyService.updateMyRelation(editingId, RELATION_OPTIONS[myRelationIndex] || '')
-        wx.showToast({ title: '已保存', icon: 'none' })
+        // 后端版本落后时该接口可能 404，不能因此让名字保存失败
+        let relSaved = true
+        try {
+          await babyService.updateMyRelation(editingId, RELATION_OPTIONS[myRelationIndex] || '')
+        } catch (relErr) {
+          console.warn('[mine] 称谓保存失败:', relErr)
+          relSaved = false
+        }
+        wx.showToast({ title: relSaved ? '已保存' : '名字已保存，称谓保存失败', icon: 'none' })
       } else {
         payload.relation = RELATION_OPTIONS[myRelationIndex] || ''
         await babyService.create(payload)
