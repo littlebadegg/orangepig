@@ -161,6 +161,7 @@ router.get('/daily', auth, async (req, res, next) => {
       const ago = diffMinutes(last.time, new Date())
       lastDiaper = {
         timeText: formatTime(last.time),
+        minutes: ago,
         agoText: ago < 60 ? `${ago}分钟前` : formatDuration(ago) + '前',
         typeText: last.type === 'pee' ? '小便' : last.type === 'poo' ? '大便' : '大小便',
       }

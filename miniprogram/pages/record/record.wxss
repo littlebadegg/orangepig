@@ -69,12 +69,49 @@
 }
 
 .last-tip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   margin-top: 20rpx;
   padding: 16rpx 20rpx;
   background: #fff8f2;
   border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #c1683c;
+}
+
+.tip-icon {
+  font-size: 32rpx;
+  margin-right: 16rpx;
+}
+
+.tip-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tip-ago {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #ff7a45;
+}
+
+.tip-detail {
+  font-size: 22rpx;
+  color: #b58b6f;
+  margin-top: 2rpx;
+}
+
+/* 超过 3 小时没换尿片：变色提醒 */
+.last-tip-warn {
+  background: #fff1f0;
+}
+
+.last-tip-warn .tip-ago {
+  color: #e34d59;
+}
+
+.last-tip-warn .tip-detail {
+  color: #c98a86;
 }
 
 /* 一键记录按钮 */

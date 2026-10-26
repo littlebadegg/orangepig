@@ -86,10 +86,18 @@
       </view>
     </view>
     <view class="last-tip" wx:if="{{stats.feeding.lastFeeding}}">
-      上次喂养 {{stats.feeding.lastFeeding.timeText}} · {{stats.feeding.lastFeeding.agoText}} · {{stats.feeding.lastFeeding.title}}
+      <text class="tip-icon">🍼</text>
+      <view class="tip-main">
+        <text class="tip-ago">距上次喂养 {{stats.feeding.lastFeeding.agoText}}</text>
+        <text class="tip-detail">{{stats.feeding.lastFeeding.timeText}} · {{stats.feeding.lastFeeding.title}}</text>
+      </view>
     </view>
-    <view class="last-tip" wx:if="{{stats.diaper.lastDiaper}}">
-      上次换尿片 {{stats.diaper.lastDiaper.timeText}} · {{stats.diaper.lastDiaper.agoText}} · {{stats.diaper.lastDiaper.typeText}}
+    <view class="last-tip {{stats.diaper.lastDiaper.minutes >= 180 ? 'last-tip-warn' : ''}}" wx:if="{{stats.diaper.lastDiaper}}">
+      <text class="tip-icon">🧷</text>
+      <view class="tip-main">
+        <text class="tip-ago">距上次换尿片 {{stats.diaper.lastDiaper.agoText}}</text>
+        <text class="tip-detail">{{stats.diaper.lastDiaper.timeText}} · {{stats.diaper.lastDiaper.typeText}}</text>
+      </view>
     </view>
 
     <!-- 第二行：排气操 / 吐奶 / 洗澡 / 体温 -->
