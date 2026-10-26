@@ -1,0 +1,71 @@
+<view class="page">
+
+  <!-- ===== 未添加宝宝 ===== -->
+  <view class="card empty-card" wx:if="{{!loading && !currentBaby}}">
+    <text class="empty-icon">👶</text>
+    <text>还没有添加宝宝</text>
+    <view class="btn btn-primary go-btn" bindtap="goMine">去添加</view>
+  </view>
+
+  <block wx:if="{{currentBaby}}">
+    <!-- ===== 总分 ===== -->
+    <view class="card score-hero" wx:if="{{score}}">
+      <view class="hero-top">
+        <text class="hero-title">{{currentBaby.name}} · {{dateText}}</text>
+        <text class="hero-level level-{{score.level === '优秀' ? 'good' : score.level === '良好' ? 'fine' : score.level === '一般' ? 'mid' : 'low'}}">{{score.level}}</text>
+      </view>
+
+      <view class="hero-main">
+        <view class="hero-ring">
+          <text class="hero-total">{{score.total}}</text>
+          <text class="hero-unit">分</text>
+        </view>
+        <view class="hero-side">
+          <view class="hero-row"><text class="hero-dot dot-base"></text><text>基础得分</text><text class="hero-val">{{score.base}}</text></view>
+          <view class="hero-row"><text class="hero-dot dot-bonus"></text><text>加分项</text><text class="hero-val val-bonus">+{{score.bonus}}</text></view>
+          <view class="hero-row"><text class="hero-dot dot-penalty"></text><text>扣分项</text><text class="hero-val val-penalty">{{score.penalty}}</text></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ===== 各维度 ===== -->
+    <view class="card" wx:if="{{score}}">
+      <view class="card-title">各维度得分</view>
+      <view class="dim-item" wx:for="{{score.items}}" wx:key="key">
+        <view class="row-between">
+          <text class="dim-label">{{item.icon}} {{item.label}}</text>
+          <text class="dim-score {{item.score === item.max ? 'dim-full' : ''}}">{{item.score}}<text class="dim-max">/{{item.max}}</text></text>
+        </view>
+        <view class="dim-bar">
+          <view class="dim-bar-fill" style="width: {{item.score / item.max * 100}}%"></view>
+        </view>
+        <text class="dim-detail">{{item.detail}}</text>
+      </view>
+    </view>
+
+    <!-- ===== 加减分明细 ===== -->
+    <view class="card" wx:if="{{score && (score.bonusItems.length > 0 || score.penaltyItems.length > 0)}}">
+      <view class="card-title">加减分明细</view>
+      <view class="tag-list">
+        <text class="score-tag tag-bonus" wx:for="{{score.bonusItems}}" wx:key="label">+{{item.value}} {{item.label}}</text>
+        <text class="score-tag tag-penalty" wx:for="{{score.penaltyItems}}" wx:key="label">{{item.value}} {{item.label}}</text>
+      </view>
+    </view>
+
+    <!-- ===== 改进建议 ===== -->
+    <view class="card" wx:if="{{score && score.tips.length > 0}}">
+      <view class="card-title">改进建议</view>
+      <text class="tip" wx:for="{{score.tips}}" wx:key="*this">· {{item}}</text>
+    </view>
+
+    <!-- ===== 规则说明 ===== -->
+    <view class="card rules-card">
+      <view class="card-title">评分规则</view>
+      <text class="rule-line">满分 100：喂养 30 · 睡眠 25 · 尿片 20 · 排气操 10 · 体温 15</text>
+      <text class="rule-line">加分上限 +10：洗澡 +3 · 记录覆盖≥5类 +4 · 吐奶很少 +3</text>
+      <text class="rule-line">扣分：体温≥37.3 再 −5 · 吐奶≥3次 −5 · 吐奶中/大量 −3</text>
+      <text class="rule-line">一天完全没记录时总分归零</text>
+    </view>
+  </block>
+
+</view>

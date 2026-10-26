@@ -2,6 +2,7 @@
   "pages": [
     "pages/login/login",
     "pages/record/record",
+    "pages/score/score",
     "pages/stats/stats",
     "pages/mine/mine",
     "pages/invite/invite",
@@ -26,6 +27,12 @@
         "text": "记录",
         "iconPath": "images/tab/record.png",
         "selectedIconPath": "images/tab/record-active.png"
+      },
+      {
+        "pagePath": "pages/score/score",
+        "text": "评分",
+        "iconPath": "images/tab/score.png",
+        "selectedIconPath": "images/tab/score-active.png"
       },
       {
         "pagePath": "pages/stats/stats",

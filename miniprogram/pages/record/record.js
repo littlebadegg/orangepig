@@ -206,6 +206,11 @@ Page({
 
   // ============ 切换宝宝 ============
 
+  /** 去评分 tab 看完整评分 */
+  goScore() {
+    wx.switchTab({ url: '/pages/score/score' })
+  },
+
   onSwitchBaby() {
     const { babies } = this.data
     if (!babies || babies.length === 0) {

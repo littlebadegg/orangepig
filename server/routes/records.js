@@ -223,10 +223,12 @@ router.post('/sleep/end', auth, async (req, res, next) => {
     }
 
     // 优先用传入 id，其次自动找该宝宝进行中的睡眠
+    // 注意：睡眠是「宝宝的状态」，不归属某个记录人 ——
+    // 爸爸按了「睡觉」，妈妈/奶奶同样可以按「起床」，所以这里不限制 userId
     let record = null
     if (id) {
       record = await SleepRecord.findOne({
-        where: { id, babyId: baby.id, userId: req.userId, status: 1 },
+        where: { id, babyId: baby.id, status: 1 },
       })
     } else {
       record = await SleepRecord.findOne({
@@ -842,7 +844,9 @@ router.put('/:type/:id', auth, async (req, res, next) => {
       return res.apiError('记录不存在', 404, 404)
     }
     const owner = await isBabyOwner(record.babyId, req.userId)
-    if (record.userId !== req.userId && !owner) {
+    // 睡眠是宝宝的状态（谁都能帮着按起床），所以允许家人修改；
+    // 其余记录仍只允许本人（或宝宝创建者）修改
+    if (record.userId !== req.userId && !owner && type !== 'sleep') {
       return res.apiError('家人只能修改自己记录的内容', 403, 403)
     }
 
@@ -1036,8 +1040,9 @@ router.delete('/:type/:id', auth, async (req, res, next) => {
     }
 
     // 创建者能删宝宝的全部记录；被邀请的家人只能删自己记的那条
+    // 睡眠例外：任何家人都能删（谁按的起床谁负责收拾）
     const owner = await isBabyOwner(record.babyId, req.userId)
-    if (record.userId !== req.userId && !owner) {
+    if (record.userId !== req.userId && !owner && type !== 'sleep') {
       return res.apiError('家人只能删除自己记录的内容', 403, 403)
     }
 

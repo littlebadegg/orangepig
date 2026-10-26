@@ -344,6 +344,12 @@
   margin-top: 4rpx;
 }
 
+/* 评分入口（标题右侧） */
+.score-link {
+  font-size: 24rpx;
+  color: #ff7a45;
+}
+
 /* 弹窗里的说明文字 */
 .sheet-tip {
   font-size: 24rpx;

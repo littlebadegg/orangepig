@@ -12,6 +12,53 @@
     <view class="switch-btn" bindtap="onSwitchBaby">切换</view>
   </view>
 
+  <!-- ===== 一键记录 ===== -->
+  <view class="card">
+    <view class="row-between">
+      <text class="card-title">一键记录</text>
+      <text class="score-link" wx:if="{{stats && stats.score}}" bindtap="goScore">今日评分 {{stats.score.total}} 分 · {{stats.score.level}} ›</text>
+    </view>
+    <view class="actions">
+      <view class="action action-feed" hover-class="action-hover" bindtap="openFeeding">
+        <text class="action-icon">🍼</text>
+        <text class="action-label">喂奶</text>
+      </view>
+      <view class="action action-diaper" hover-class="action-hover" bindtap="openDiaper">
+        <text class="action-icon">🧷</text>
+        <text class="action-label">换尿片</text>
+      </view>
+      <view class="action action-sleep {{ongoing ? 'action-active' : ''}}" hover-class="action-hover" bindtap="onSleepTap">
+        <text class="action-icon">{{ongoing ? '🌞' : '😴'}}</text>
+        <text class="action-label">{{ongoing ? '起床' : '睡觉'}}</text>
+      </view>
+      <view class="action action-spitup" hover-class="action-hover" bindtap="openSpitUp">
+        <text class="action-icon">🤮</text>
+        <text class="action-label">吐奶</text>
+      </view>
+    </view>
+    <view class="actions actions-more">
+      <view class="action action-bath" hover-class="action-hover" bindtap="openBath">
+        <text class="action-icon">🛁</text>
+        <text class="action-label">洗澡</text>
+      </view>
+      <view class="action action-exercise" hover-class="action-hover" bindtap="openExercise">
+        <text class="action-icon">🤸</text>
+        <text class="action-label">排气操</text>
+      </view>
+      <view class="action action-growth" hover-class="action-hover" bindtap="openGrowth">
+        <text class="action-icon">📏</text>
+        <text class="action-label">身高体重</text>
+      </view>
+      <view class="action action-temp" hover-class="action-hover" bindtap="openTemperature">
+        <text class="action-icon">🌡️</text>
+        <text class="action-label">体温</text>
+      </view>
+    </view>
+    <view class="sleeping-tip" wx:if="{{ongoing}}">
+      宝宝 {{ongoing.startText}} 入睡 · 已睡 {{sleepElapsed}}
+    </view>
+  </view>
+
   <!-- ===== 今日概览 ===== -->
   <view class="card" wx:if="{{stats}}">
     <view class="card-title">今日概览</view>
@@ -76,86 +123,6 @@
       <text class="growth-item">📏 {{stats.growth.heightText || '—'}}</text>
       <text class="growth-item">⚖️ {{stats.growth.weightText || '—'}}</text>
       <text class="growth-date" wx:if="{{stats.growth.measuredText}}">{{stats.growth.measuredText}}</text>
-    </view>
-  </view>
-
-  <!-- ===== 今日养育评分 ===== -->
-  <view class="card score-card" wx:if="{{stats && stats.score}}">
-    <view class="row-between">
-      <text class="card-title">今日养育评分</text>
-      <text class="score-level">{{stats.score.level}}</text>
-    </view>
-
-    <view class="score-main">
-      <text class="score-total">{{stats.score.total}}</text>
-      <text class="score-unit">分</text>
-      <text class="score-sub">基础 {{stats.score.base}} 分 · 加分 +{{stats.score.bonus}} 分</text>
-    </view>
-
-    <view class="score-items">
-      <view class="score-item" wx:for="{{stats.score.items}}" wx:key="key">
-        <view class="row-between">
-          <text class="score-item-label">{{item.icon}} {{item.label}}</text>
-          <text class="score-item-score">{{item.score}}/{{item.max}}</text>
-        </view>
-        <view class="score-bar">
-          <view class="score-bar-fill" style="width: {{item.score / item.max * 100}}%"></view>
-        </view>
-        <text class="score-item-detail">{{item.detail}}</text>
-      </view>
-    </view>
-
-    <view class="score-tags" wx:if="{{stats.score.bonusItems.length > 0 || stats.score.penaltyItems.length > 0}}">
-      <text class="score-tag tag-bonus" wx:for="{{stats.score.bonusItems}}" wx:key="label">+{{item.value}} {{item.label}}</text>
-      <text class="score-tag tag-penalty" wx:for="{{stats.score.penaltyItems}}" wx:key="label">{{item.value}} {{item.label}}</text>
-    </view>
-
-    <view class="score-tips" wx:if="{{stats.score.tips.length > 0}}">
-      <text class="score-tip" wx:for="{{stats.score.tips}}" wx:key="*this">· {{item}}</text>
-    </view>
-  </view>
-
-  <!-- ===== 一键记录 ===== -->
-  <view class="card">
-    <view class="card-title">一键记录</view>
-    <view class="actions">
-      <view class="action action-feed" hover-class="action-hover" bindtap="openFeeding">
-        <text class="action-icon">🍼</text>
-        <text class="action-label">喂奶</text>
-      </view>
-      <view class="action action-diaper" hover-class="action-hover" bindtap="openDiaper">
-        <text class="action-icon">🧷</text>
-        <text class="action-label">换尿片</text>
-      </view>
-      <view class="action action-sleep {{ongoing ? 'action-active' : ''}}" hover-class="action-hover" bindtap="onSleepTap">
-        <text class="action-icon">{{ongoing ? '🌞' : '😴'}}</text>
-        <text class="action-label">{{ongoing ? '起床' : '睡觉'}}</text>
-      </view>
-      <view class="action action-spitup" hover-class="action-hover" bindtap="openSpitUp">
-        <text class="action-icon">🤮</text>
-        <text class="action-label">吐奶</text>
-      </view>
-    </view>
-    <view class="actions actions-more">
-      <view class="action action-bath" hover-class="action-hover" bindtap="openBath">
-        <text class="action-icon">🛁</text>
-        <text class="action-label">洗澡</text>
-      </view>
-      <view class="action action-exercise" hover-class="action-hover" bindtap="openExercise">
-        <text class="action-icon">🤸</text>
-        <text class="action-label">排气操</text>
-      </view>
-      <view class="action action-growth" hover-class="action-hover" bindtap="openGrowth">
-        <text class="action-icon">📏</text>
-        <text class="action-label">身高体重</text>
-      </view>
-      <view class="action action-temp" hover-class="action-hover" bindtap="openTemperature">
-        <text class="action-icon">🌡️</text>
-        <text class="action-label">体温</text>
-      </view>
-    </view>
-    <view class="sleeping-tip" wx:if="{{ongoing}}">
-      宝宝 {{ongoing.startText}} 入睡 · 已睡 {{sleepElapsed}}
     </view>
   </view>
 
