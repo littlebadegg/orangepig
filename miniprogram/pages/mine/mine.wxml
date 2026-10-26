@@ -36,12 +36,13 @@
             <text class="role-tag" wx:if="{{item.role === 'member'}}">家人共享</text>
           </view>
           <text class="baby-item-sub">{{item.genderText}} · {{item.birthday || '未设置生日'}}</text>
+          <text class="baby-item-family">我是宝宝的{{item.myRelationText || '家人'}}</text>
           <text class="baby-item-family" wx:if="{{item.memberCount > 1}}">👨‍👩‍👧 {{item.memberCount}} 人一起记录</text>
         </view>
       </view>
       <view class="baby-ops">
         <block wx:if="{{item.isOwner}}">
-          <text class="baby-op" data-id="{{item.id}}" data-name="{{item.name}}" data-gender="{{item.gender}}" data-birthday="{{item.birthday}}" bindtap="openEdit">编辑</text>
+          <text class="baby-op" data-id="{{item.id}}" data-name="{{item.name}}" data-gender="{{item.gender}}" data-birthday="{{item.birthday}}" data-relation="{{item.myRelation}}" bindtap="openEdit">编辑</text>
           <text class="baby-op" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="openFamily">家人</text>
           <text class="baby-op baby-op-del" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="onDeleteBaby">删除</text>
         </block>
@@ -98,8 +99,8 @@
       <view class="picker">{{babyBirthday || '请选择（可不填）'}}</view>
     </picker>
 
-    <view class="sheet-label" wx:if="{{!editingId}}">你是宝宝的（选填）</view>
-    <picker wx:if="{{!editingId}}" mode="selector" range="{{relationOptions}}" value="{{myRelationIndex}}" bindchange="onMyRelationChange">
+    <view class="sheet-label">你是宝宝的</view>
+    <picker mode="selector" range="{{relationOptions}}" value="{{myRelationIndex}}" bindchange="onMyRelationChange">
       <view class="picker">{{relationOptions[myRelationIndex]}}</view>
     </picker>
 
@@ -136,6 +137,11 @@
         <text class="member-name">{{item.name}}<text class="member-self" wx:if="{{item.isSelf}}">（我）</text></text>
         <text class="member-sub">{{item.role === 'owner' ? '创建者' : '家人'}}{{item.relation ? ' · ' + item.relation : ''}}</text>
       </view>
+      <block wx:if="{{item.isSelf}}">
+        <picker mode="selector" range="{{relationOptions}}" data-uid="{{item.userId}}" data-relation="{{item.relation}}" bindchange="onMyRelationEdit">
+          <text class="member-op member-op-edit">改称呼</text>
+        </picker>
+      </block>
       <text class="member-op" wx:if="{{familyIsOwner && !item.isSelf}}" data-uid="{{item.userId}}" data-name="{{item.name}}" bindtap="onRemoveMember">移除</text>
     </view>
 

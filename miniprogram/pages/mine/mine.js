@@ -83,13 +83,16 @@ Page({
   },
 
   openEdit(e) {
-    const { id, name, gender, birthday } = e.currentTarget.dataset
+    const { id, name, gender, birthday, relation } = e.currentTarget.dataset
+    const idx = RELATION_OPTIONS.indexOf(relation)
     this.setData({
       showSheet: true,
       editingId: id,
       babyName: name || '',
       babyGender: parseInt(gender) || 0,
       babyBirthday: birthday || '',
+      // 带出当前称谓，方便修改或补充
+      myRelationIndex: idx >= 0 ? idx : 0,
     })
   },
 
@@ -131,6 +134,8 @@ Page({
       }
       if (editingId) {
         await babyService.update(editingId, payload)
+        // 称谓也一并保存（补充/修改自己是宝宝的谁）
+        await babyService.updateMyRelation(editingId, RELATION_OPTIONS[myRelationIndex] || '')
         wx.showToast({ title: '已保存', icon: 'none' })
       } else {
         payload.relation = RELATION_OPTIONS[myRelationIndex] || ''
@@ -225,6 +230,24 @@ Page({
         }
       },
     })
+  },
+
+  /** 修改自己在宝宝里的称谓（家人弹窗里「改称呼」） */
+  async onMyRelationEdit(e) {
+    const { uid } = e.currentTarget.dataset
+    const index = parseInt(e.detail.value)
+    const relation = RELATION_OPTIONS[index]
+    if (!uid || !relation) return
+
+    try {
+      await babyService.updateRelation(this.data.familyBabyId, uid, relation)
+      wx.showToast({ title: `已改为${relation}`, icon: 'none' })
+      const data = await babyService.members(this.data.familyBabyId)
+      this.setData({ members: data.list || [] })
+      await this.refresh()
+    } catch (err) {
+      wx.showToast({ title: err.message || '修改失败', icon: 'none' })
+    }
   },
 
   /** 列表里的「退出」 */

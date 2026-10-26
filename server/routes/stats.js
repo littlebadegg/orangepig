@@ -153,6 +153,19 @@ router.get('/daily', auth, async (req, res, next) => {
       }
     }
 
+    // 上次换尿片 + 距现在多久
+    let lastDiaper = null
+    if (diapers.length > 0) {
+      const sorted = [...diapers].sort((a, b) => new Date(a.time) - new Date(b.time))
+      const last = sorted[sorted.length - 1]
+      const ago = diffMinutes(last.time, new Date())
+      lastDiaper = {
+        timeText: formatTime(last.time),
+        agoText: ago < 60 ? `${ago}分钟前` : formatDuration(ago) + '前',
+        typeText: last.type === 'pee' ? '小便' : last.type === 'poo' ? '大便' : '大小便',
+      }
+    }
+
     // 睡眠（含进行中的那一段）
     const sleepMinutes = sleeps.reduce((sum, s) => sum + (s.duration || 0), 0)
     const ongoing = await SleepRecord.findOne({
@@ -209,6 +222,7 @@ router.get('/daily', auth, async (req, res, next) => {
         count: diapers.length,
         peeCount: diapers.filter((d) => d.type === 'pee' || d.type === 'both').length,
         pooCount: diapers.filter((d) => d.type === 'poo' || d.type === 'both').length,
+        lastDiaper,
       },
       sleep: {
         count: sleeps.length,

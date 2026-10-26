@@ -76,6 +76,7 @@ router.get('/', auth, async (req, res, next) => {
     const list = await Promise.all(
       babies.map(async (b) => {
         const role = await getMemberRole(b.id, req.userId)
+        const myRelation = role && role.relation ? role.relation : ''
         return {
           id: b.id,
           name: b.name,
@@ -85,6 +86,9 @@ router.get('/', auth, async (req, res, next) => {
           role: role ? role.role : 'member',
           isOwner: b.userId === req.userId,
           memberCount: await countMembers(b.id),
+          // 我在这个宝宝里的称谓（时间线记录人显示用）
+          myRelation,
+          myRelationText: myRelation || (b.userId === req.userId ? '家长' : '家人'),
         }
       })
     )
@@ -106,6 +110,10 @@ router.post('/', auth, async (req, res, next) => {
       return res.apiError('请输入宝宝昵称', 400, 400)
     }
 
+    if (!relation || !String(relation).trim()) {
+      return res.apiError('请选择你是宝宝的谁', 400, 400)
+    }
+
     const baby = await Baby.create({
       userId: req.userId,
       name: String(name).trim().slice(0, 30),
@@ -118,7 +126,7 @@ router.post('/', auth, async (req, res, next) => {
       babyId: baby.id,
       userId: req.userId,
       role: 'owner',
-      relation: relation ? String(relation).trim().slice(0, 20) : '',
+      relation: String(relation).trim().slice(0, 20),
     })
 
     // 第一个宝宝自动设为当前宝宝
@@ -307,6 +315,11 @@ router.post('/join', auth, async (req, res, next) => {
       return res.apiError('请输入邀请码', 400, 400)
     }
 
+    const relation = String(req.body.relation || '').trim()
+    if (!relation) {
+      return res.apiError('请选择你是宝宝的谁', 400, 400)
+    }
+
     const baby = await Baby.findOne({ where: { inviteCode: code, status: 1 } })
     if (!baby) {
       return res.apiError('邀请码不存在或已失效', 404, 404)
@@ -328,14 +341,14 @@ router.post('/join', auth, async (req, res, next) => {
       await exist.update({
         status: 1,
         role: 'member',
-        relation: req.body.relation ? String(req.body.relation).trim().slice(0, 20) : exist.relation,
+        relation: relation.slice(0, 20),
       })
     } else {
       await BabyMember.create({
         babyId: baby.id,
         userId: req.userId,
         role: 'member',
-        relation: req.body.relation ? String(req.body.relation).trim().slice(0, 20) : '',
+        relation: relation.slice(0, 20),
       })
     }
 
@@ -400,6 +413,36 @@ router.get('/:id/members', auth, async (req, res, next) => {
       isOwner: baby.userId === req.userId,
       list,
     })
+  } catch (err) {
+    next(err)
+  }
+})
+
+/**
+ * 修改自己的称谓（任何成员都可以，补充或更改）
+ */
+router.put('/:id/my-relation', auth, async (req, res, next) => {
+  try {
+    const baby = await findOwnBaby(req.params.id, req.userId)
+    if (!baby) {
+      return res.apiError('宝宝不存在', 404, 404)
+    }
+
+    const relation = String(req.body.relation || '').trim()
+    if (!relation) {
+      return res.apiError('请选择称谓', 400, 400)
+    }
+
+    const member = await BabyMember.findOne({
+      where: { babyId: baby.id, userId: req.userId, status: 1 },
+    })
+    if (!member) {
+      return res.apiError('成员不存在', 404, 404)
+    }
+
+    await member.update({ relation: relation.slice(0, 20) })
+
+    res.apiSuccess({ babyId: baby.id, relation: member.relation })
   } catch (err) {
     next(err)
   }

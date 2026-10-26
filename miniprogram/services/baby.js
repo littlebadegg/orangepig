@@ -55,6 +55,11 @@ function updateRelation(babyId, userId, relation) {
   return put(`/babies/${babyId}/members/${userId}`, { relation })
 }
 
+/** 修改自己的称谓 { relation } */
+function updateMyRelation(babyId, relation) {
+  return put(`/babies/${babyId}/my-relation`, { relation })
+}
+
 /** 移除成员（仅创建者） */
 function removeMember(babyId, userId) {
   return del(`/babies/${babyId}/members/${userId}`)
@@ -76,6 +81,7 @@ module.exports = {
   join,
   members,
   updateRelation,
+  updateMyRelation,
   removeMember,
   leave,
 }

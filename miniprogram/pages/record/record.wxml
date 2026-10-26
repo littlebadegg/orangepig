@@ -88,6 +88,9 @@
     <view class="last-tip" wx:if="{{stats.feeding.lastFeeding}}">
       上次喂养 {{stats.feeding.lastFeeding.timeText}} · {{stats.feeding.lastFeeding.agoText}} · {{stats.feeding.lastFeeding.title}}
     </view>
+    <view class="last-tip" wx:if="{{stats.diaper.lastDiaper}}">
+      上次换尿片 {{stats.diaper.lastDiaper.timeText}} · {{stats.diaper.lastDiaper.agoText}} · {{stats.diaper.lastDiaper.typeText}}
+    </view>
 
     <!-- 第二行：排气操 / 吐奶 / 洗澡 / 体温 -->
     <view class="overview overview-sub" wx:if="{{stats && (stats.exercise.count || stats.spitUp.count || stats.bath.count || stats.temperature.count)}}">
