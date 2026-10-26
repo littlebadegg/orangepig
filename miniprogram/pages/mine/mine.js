@@ -369,7 +369,7 @@ Page({
       }
     }
     return {
-      title: '橙猪宝宝记 — 记录宝宝每一次成长',
+      title: '宝宝日记 — 记录宝宝每一次成长',
       path: '/pages/record/record',
     }
   },
