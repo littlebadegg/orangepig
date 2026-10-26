@@ -384,8 +384,8 @@ router.get('/:id/members', auth, async (req, res, next) => {
         role: m.role,
         isOwner: m.role === 'owner',
         isSelf,
-        // 有称呼就显示称呼，否则退回微信昵称
-        name: m.relation || u.nickName || '家人',
+        // 与时间线记录人一致：称谓 → 家长/家人，不露出微信昵称编号
+        name: m.relation || (m.role === 'owner' ? '家长' : '家人'),
         relation: m.relation || '',
         nickName: u.nickName || '',
         avatarUrl: u.avatarUrl || '',

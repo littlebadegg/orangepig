@@ -118,9 +118,9 @@ async function resolveBaby(req) {
  * 宝宝成员 → 展示名映射 { userId: '小橙子的爸爸' }
  * 用于时间线显示「这条是谁记的」
  *
- * 展示规则：
- *   有称谓（relation）→ 「宝宝昵称 + 的 + 称谓」，如「小橙子的爸爸」
- *   无称谓 → 退回微信昵称，再没有就「家人」
+ * 展示规则（永远不露出微信昵称，避免出现「橙猪用户_xxxx」这种编号名）：
+ *   1. 有称谓（relation）→ 「宝宝昵称 + 的 + 称谓」，如「小橙子的爸爸」
+ *   2. 没填称谓：创建者 → 「宝宝昵称的家长」，其他成员 → 「宝宝昵称的家人」
  * @returns {Promise<Record<number, string>>}
  */
 async function buildRecorderMap(babyId) {
@@ -142,12 +142,11 @@ async function buildRecorderMap(babyId) {
   const map = {}
   users.forEach((u) => {
     const member = members.find((m) => m.userId === u.id)
+    // 老数据可能没有成员记录，宝宝创建者按 owner 处理
+    const role = member ? member.role : u.id === baby.userId ? 'owner' : 'member'
     const relation = (member && member.relation ? String(member.relation) : '').trim()
-    if (relation) {
-      map[u.id] = `${baby.name}的${relation}`
-    } else {
-      map[u.id] = u.nickName || '家人'
-    }
+    const title = relation || (role === 'owner' ? '家长' : '家人')
+    map[u.id] = `${baby.name}的${title}`
   })
   return map
 }
