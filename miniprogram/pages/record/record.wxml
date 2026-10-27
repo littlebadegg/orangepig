@@ -149,7 +149,7 @@
       <text>今天还没有记录，点上面的按钮记一条</text>
     </view>
 
-    <view class="record-item" wx:for="{{list}}" wx:key="key" data-kind="{{item.kind}}" data-id="{{item.id}}" bindtap="onEditRecord" hover-class="record-hover">
+    <view class="record-item" wx:for="{{list}}" wx:key="key" wx:if="{{showAllRecords || index < 5}}" data-kind="{{item.kind}}" data-id="{{item.id}}" bindtap="onEditRecord" hover-class="record-hover">
       <view class="record-icon">{{item.icon}}</view>
       <view class="col record-main">
         <text class="record-title">{{item.title}}</text>
@@ -159,6 +159,12 @@
       </view>
       <text class="record-time">{{item.timeText}}</text>
       <view class="record-del" data-kind="{{item.kind}}" data-id="{{item.id}}" catchtap="onDeleteRecord">✕</view>
+    </view>
+
+    <!-- 折叠/展开 -->
+    <view class="record-toggle" wx:if="{{list.length > 5}}" bindtap="onToggleRecords">
+      {{showAllRecords ? '收起' : '展开全部 ' + list.length + ' 条'}}
+      <text class="toggle-arrow">{{showAllRecords ? '↑' : '↓'}}</text>
     </view>
   </view>
 

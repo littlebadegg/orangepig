@@ -540,3 +540,19 @@
 .record-hover {
   background: #fafafa;
 }
+
+/* ===== 记录折叠 ===== */
+.record-toggle {
+  margin-top: 20rpx;
+  padding: 16rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #ff7a45;
+  background: #fff8f2;
+  border-radius: 12rpx;
+}
+
+.toggle-arrow {
+  margin-left: 8rpx;
+  font-size: 24rpx;
+}

@@ -42,6 +42,17 @@ function toNum(value) {
   return isNaN(n) ? null : n
 }
 
+/** 距现在多久（跨天友好：X分钟前 / X小时前 / X天X小时前） */
+function agoTextOf(minutes) {
+  if (minutes === null || minutes === undefined) return ''
+  const m = Math.max(0, Math.round(minutes))
+  if (m < 60) return `${m}分钟前`
+  if (m < 1440) return formatDuration(m) + '前'
+  const d = Math.floor(m / 1440)
+  const h = Math.floor((m % 1440) / 60)
+  return h > 0 ? `${d}天${h}小时前` : `${d}天前`
+}
+
 /**
  * 体温分级
  * < 37.3 正常 / 37.3~38 低热 / 38~39 中度发热 / ≥ 39 高热
@@ -141,29 +152,56 @@ router.get('/daily', auth, async (req, res, next) => {
     const breastMinutes = breastList.reduce((sum, f) => sum + (f.duration || 0), 0)
 
     // 距上一次喂养过了多久（分钟）
+    // 跨天兜底：今天还没喂时，取昨天/更早最近的一条，避免 0 点后「距上次喂养」消失
+    let lastFeedingRow =
+      feedings.length > 0 ? feedings[feedings.length - 1] : null
+    if (!lastFeedingRow) {
+      lastFeedingRow = await FeedingRecord.findOne({
+        where: { babyId: baby.id, time: { [Op.lt]: from }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      })
+    }
     let lastFeeding = null
-    if (feedings.length > 0) {
-      const last = feedings[feedings.length - 1]
-      const ago = diffMinutes(last.time, new Date())
+    if (lastFeedingRow) {
+      const ago = diffMinutes(lastFeedingRow.time, new Date())
       lastFeeding = {
-        timeText: formatTime(last.time),
-        agoMinutes: ago,
-        agoText: ago < 60 ? `${ago}分钟前` : formatDuration(ago) + '前',
-        title: last.type === 'formula' ? `奶粉 ${last.amount}ml` : `母乳 ${last.duration}分钟`,
+        timeText: formatTime(lastFeedingRow.time),
+        minutes: ago,
+        agoText: agoTextOf(ago),
+        title:
+          lastFeedingRow.type === 'formula'
+            ? `奶粉 ${lastFeedingRow.amount}ml`
+            : `母乳 ${lastFeedingRow.duration}分钟`,
       }
     }
 
-    // 上次换尿片 + 距现在多久
-    let lastDiaper = null
+    // 上次换尿片 + 距现在多久（同样跨天兜底）
+    let lastDiaperRow = null
     if (diapers.length > 0) {
-      const sorted = [...diapers].sort((a, b) => new Date(a.time) - new Date(b.time))
-      const last = sorted[sorted.length - 1]
-      const ago = diffMinutes(last.time, new Date())
+      lastDiaperRow = [...diapers].sort(
+        (a, b) => new Date(a.time) - new Date(b.time)
+      ).pop()
+    } else {
+      lastDiaperRow = await DiaperRecord.findOne({
+        where: { babyId: baby.id, time: { [Op.lt]: from }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      })
+    }
+    let lastDiaper = null
+    if (lastDiaperRow) {
+      const ago = diffMinutes(lastDiaperRow.time, new Date())
       lastDiaper = {
-        timeText: formatTime(last.time),
+        timeText: formatTime(lastDiaperRow.time),
         minutes: ago,
-        agoText: ago < 60 ? `${ago}分钟前` : formatDuration(ago) + '前',
-        typeText: last.type === 'pee' ? '小便' : last.type === 'poo' ? '大便' : '大小便',
+        agoText: agoTextOf(ago),
+        typeText:
+          lastDiaperRow.type === 'pee'
+            ? '小便'
+            : lastDiaperRow.type === 'poo'
+              ? '大便'
+              : '大小便',
       }
     }
 

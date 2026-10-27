@@ -99,15 +99,26 @@ Page({
     tempMethods: TEMP_METHODS,
     loading: true,
     submitting: false,
+    // 今日记录折叠：默认只展示前 5 条
+    showAllRecords: false,
   },
+
+  /** 默认展示条数 */
+  previewCount: 5,
 
   timer: null,
 
   onLoad() {
+    // 启动直达首页：没登录才去登录页
+    if (!wx.getStorageSync('access_token')) {
+      wx.reLaunch({ url: '/pages/login/login' })
+      return
+    }
     this.setData({ timeValue: currentHM() })
   },
 
   onShow() {
+    if (!wx.getStorageSync('access_token')) return
     this.refresh()
     this.startTimer()
   },
@@ -908,6 +919,13 @@ Page({
     } finally {
       this.setData({ submitting: false })
     }
+  },
+
+  // ============ 今日记录折叠 ============
+
+  onToggleRecords() {
+    this.setData({ showAllRecords: !this.data.showAllRecords })
+    wx.pageScrollTo({ duration: 0 })
   },
 
   // ============ 删除记录 ============
