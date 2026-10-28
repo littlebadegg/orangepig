@@ -46,8 +46,10 @@ async function accessibleBabyIds(userId) {
 async function findOwnBaby(babyId, userId) {
   if (!babyId || !userId) return null
   const ids = await accessibleBabyIds(userId)
-  if (ids.length === 0) return null
-  return Baby.findOne({ where: { id: babyId, status: 1, id: { [Op.in]: ids } } })
+  // 先判断权限再单条件查询 —— where 里不能同时写两个 id 键（后者会覆盖前者，
+  // 导致「id=指定宝宝」约束丢失，多宝宝场景会解析到第一个宝宝）
+  if (!ids.includes(Number(babyId))) return null
+  return Baby.findOne({ where: { id: babyId, status: 1 } })
 }
 
 /**

@@ -12,6 +12,8 @@ const DURATION_PRESETS = [10, 15, 20, 30]
 const EXERCISE_PRESETS = [3, 5, 10, 15]
 // 洗澡时长（分钟）
 const BATH_PRESETS = [5, 10, 15, 20]
+// 喂水量预设（毫升）
+const WATER_PRESETS = [10, 20, 30, 50]
 // 吐奶量文案
 const SPIT_UP_TEXT = { 1: '少量', 2: '中量', 3: '大量' }
 // 体温快捷值（℃）
@@ -44,6 +46,32 @@ Page({
     list: [],
     ongoing: null,
     sleepElapsed: '',
+
+    // 查看日期（可切换到历史日期回看记录与评分）
+    viewDate: '',
+    viewDateText: '',
+    dateStart: '2024-01-01',
+    isToday: true,
+
+    // 养育小贴士（按宝宝天数）
+    tips: [],
+    stageText: '',
+    babyAgeDays: null,
+    tipsExpanded: false,
+
+    // 自定义喂养项
+    customFeeds: [],
+
+    // 喂水弹窗
+    showWater: false,
+    waterAmount: 20,
+    waterCustomAmount: '',
+
+    // 喂养品弹窗（AD / D3 / 自定义）
+    showSupplement: false,
+    supplementName: 'AD',
+    supplementCustomName: '',
+    supplementOptions: [{ name: 'AD', label: '维生素AD' }],
 
     // 喂奶弹窗
     showFeeding: false,
@@ -97,6 +125,7 @@ Page({
     bathPresets: BATH_PRESETS,
     tempPresets: TEMP_PRESETS,
     tempMethods: TEMP_METHODS,
+    waterPresets: WATER_PRESETS,
     loading: true,
     submitting: false,
     // 今日记录折叠：默认只展示前 5 条
@@ -114,7 +143,7 @@ Page({
       wx.reLaunch({ url: '/pages/login/login' })
       return
     }
-    this.setData({ timeValue: currentHM() })
+    this.setData({ timeValue: currentHM(), viewDate: todayString(), todayEnd: todayString() })
   },
 
   onShow() {
@@ -155,7 +184,7 @@ Page({
         this.setData({ loading: false, list: [], stats: null, ongoing: null })
         return
       }
-      await this.loadRecords()
+      await Promise.all([this.loadRecords(), this.loadTips(), this.loadCustomFeeds()])
     } catch (err) {
       console.error('[record] 加载失败:', err)
       wx.showToast({ title: err.message || '加载失败', icon: 'none' })
@@ -168,10 +197,13 @@ Page({
     const babyId = this.data.currentBabyId
     if (!babyId) return
 
+    const date = this.data.viewDate || todayString()
+    const isToday = date === todayString()
+
     try {
       const [timeline, stats] = await Promise.all([
-        recordService.timeline(babyId, todayString()),
-        recordService.dailyStats(babyId, todayString()),
+        recordService.timeline(babyId, date),
+        recordService.dailyStats(babyId, date),
       ])
 
       const list = (timeline.list || []).map((item) => ({
@@ -179,14 +211,74 @@ Page({
         key: `${item.kind}_${item.id}`,
       }))
 
+      const parts = date.split('-')
       this.setData({
         list,
-        ongoing: timeline.ongoing || null,
+        ongoing: isToday ? timeline.ongoing || null : null,
         stats: normalizeStats(stats),
+        isToday,
+        viewDate: date,
+        viewDateText: isToday
+          ? '今日记录'
+          : `${parseInt(parts[0])}年${parseInt(parts[1])}月${parseInt(parts[2])}日`,
       })
       this.updateElapsed()
     } catch (err) {
       console.error('[record] 加载记录失败:', err)
+    }
+  },
+
+  // ============ 查看日期切换 ============
+
+  onDateChange(e) {
+    const date = e.detail.value
+    if (date === this.data.viewDate) return
+    this.setData({ viewDate: date })
+    this.loadRecords()
+  },
+
+  goToday() {
+    if (this.data.isToday) return
+    this.setData({ viewDate: todayString() })
+    this.loadRecords()
+  },
+
+  // ============ 养育小贴士 ============
+
+  async loadTips() {
+    const babyId = this.data.currentBabyId
+    if (!babyId) return
+    try {
+      const data = await recordService.getTips(babyId)
+      this.setData({
+        tips: data.groups || [],
+        stageText: data.stageText || '',
+        babyAgeDays: data.ageDays,
+      })
+    } catch (err) {
+      // tips 加载失败不影响主流程
+      console.error('[record] 加载小贴士失败:', err)
+    }
+  },
+
+  onToggleTips() {
+    this.setData({ tipsExpanded: !this.data.tipsExpanded })
+  },
+
+  // ============ 自定义喂养项 ============
+
+  async loadCustomFeeds() {
+    try {
+      const data = await recordService.listCustomFeeds()
+      const customFeeds = data.list || []
+      this.setData({
+        customFeeds,
+        supplementOptions: [{ name: 'AD', label: '维生素AD' }].concat(
+          customFeeds.map((c) => ({ name: c.name, label: c.name }))
+        ),
+      })
+    } catch (err) {
+      console.error('[record] 加载自定义喂养项失败:', err)
     }
   },
 
@@ -731,6 +823,184 @@ Page({
     }
   },
 
+  // ============ 喂水 ============
+
+  openWater() {
+    if (!this.checkBaby()) return
+    this.setData({
+      showWater: true,
+      editingId: null,
+      editingKind: '',
+      waterAmount: 20,
+      waterCustomAmount: '',
+      timeValue: currentHM(),
+    })
+  },
+
+  closeWater() {
+    this.setData({ showWater: false })
+  },
+
+  setWaterAmount(e) {
+    const v = parseInt(e.currentTarget.dataset.value)
+    this.setData({ waterAmount: v, waterCustomAmount: '' })
+  },
+
+  onWaterAmountInput(e) {
+    this.setData({ waterCustomAmount: e.detail.value })
+  },
+
+  async submitWater() {
+    const { waterAmount, waterCustomAmount, timeValue, currentBabyId } = this.data
+
+    // 输入框优先；都没填就是「只记喝了水，不记毫升」
+    const amount = waterCustomAmount
+      ? parseInt(waterCustomAmount)
+      : waterCustomAmount === '' && waterAmount === 0
+        ? null
+        : waterAmount
+    if (amount !== null && (isNaN(amount) || amount <= 0 || amount > 500)) {
+      wx.showToast({ title: '水量请填 1~500 ml', icon: 'none' })
+      return
+    }
+
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
+    this.setData({ submitting: true })
+    try {
+      const payload = {
+        babyId: currentBabyId,
+        amount,
+        time: `${todayString()} ${timeValue}:00`,
+      }
+      if (isEdit) {
+        await recordService.update('water', editingId, payload)
+      } else {
+        await recordService.addWater(payload)
+      }
+      this.setData({ showWater: false, editingId: null, editingKind: '' })
+      wx.showToast({
+        title: isEdit ? '已保存修改' : amount ? `已记录喂水 ${amount}ml` : '已记录喂水',
+        icon: 'none',
+      })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  // ============ 喂养品（AD / D3 / 自定义） ============
+
+  openSupplement() {
+    if (!this.checkBaby()) return
+    this.setData({
+      showSupplement: true,
+      editingId: null,
+      editingKind: '',
+      supplementName: 'AD',
+      supplementCustomName: '',
+      timeValue: currentHM(),
+    })
+  },
+
+  closeSupplement() {
+    this.setData({ showSupplement: false })
+  },
+
+  setSupplementName(e) {
+    this.setData({ supplementName: e.currentTarget.dataset.name, supplementCustomName: '' })
+  },
+
+  onSupplementNameInput(e) {
+    this.setData({ supplementCustomName: e.detail.value })
+  },
+
+  async submitSupplement() {
+    const { supplementName, supplementCustomName, timeValue, currentBabyId } = this.data
+
+    const name = (supplementCustomName || supplementName || '').trim()
+    if (!name) {
+      wx.showToast({ title: '请选择或输入喂的什么', icon: 'none' })
+      return
+    }
+
+    const isEdit = !!this.data.editingId
+    const editingId = this.data.editingId
+    this.setData({ submitting: true })
+    try {
+      // 新名称（不在现有选项里）顺手存为自定义喂养项，之后每天没喂会提醒
+      const knownNames = this.data.supplementOptions.map((o) => o.name)
+      if (!isEdit && !knownNames.includes(name) && name !== '维生素AD') {
+        try {
+          await recordService.addCustomFeed(name)
+          await this.loadCustomFeeds()
+        } catch (e) {
+          // 自定义项保存失败不阻塞记录
+          console.error('[record] 保存自定义喂养项失败:', e)
+        }
+      }
+
+      const payload = {
+        babyId: currentBabyId,
+        name,
+        time: `${todayString()} ${timeValue}:00`,
+      }
+      if (isEdit) {
+        await recordService.update('supplement', editingId, payload)
+      } else {
+        await recordService.addSupplement(payload)
+      }
+      this.setData({ showSupplement: false, editingId: null, editingKind: '' })
+      wx.showToast({ title: isEdit ? '已保存修改' : `已记录${name === 'AD' ? '维生素AD' : name}`, icon: 'none' })
+      await this.loadRecords()
+    } catch (err) {
+      wx.showToast({ title: err.message || '记录失败', icon: 'none' })
+    } finally {
+      this.setData({ submitting: false })
+    }
+  },
+
+  /** 删除自定义喂养项（不再每天提醒） */
+  onRemoveCustomFeed(e) {
+    const { name } = e.currentTarget.dataset
+    const item = (this.data.customFeeds || []).find((c) => c.name === name)
+    if (!item) return
+    wx.showModal({
+      title: '删除喂养项',
+      content: `删除「${name}」后，以后不再每天提醒，历史记录保留。确定删除吗？`,
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await recordService.removeCustomFeed(item.id)
+          wx.showToast({ title: '已删除', icon: 'none' })
+          await this.loadCustomFeeds()
+        } catch (err) {
+          wx.showToast({ title: err.message || '删除失败', icon: 'none' })
+        }
+      },
+    })
+  },
+
+  /** 点提醒条 → 快捷打开对应的记录弹窗 */
+  onReminderTap(e) {
+    const { action } = e.currentTarget.dataset
+    if (action === 'water') {
+      this.openWater()
+    } else if (action === 'supplement') {
+      const name = e.currentTarget.dataset.name
+      this.setData({ supplementName: name || 'AD', supplementCustomName: '' })
+      if (!this.checkBaby()) return
+      this.setData({
+        showSupplement: true,
+        editingId: null,
+        editingKind: '',
+        timeValue: currentHM(),
+      })
+    }
+  },
+
   // ============ 睡觉 ============
 
   async onSleepTap() {
@@ -865,6 +1135,26 @@ Page({
             item.waterTemp !== null && item.waterTemp !== undefined
               ? String(item.waterTemp)
               : '',
+          timeValue: hm,
+        })
+        break
+      case 'water':
+        this.setData({
+          showWater: true,
+          editingId: id,
+          editingKind: kind,
+          waterAmount: item.amount || 0,
+          waterCustomAmount: '',
+          timeValue: hm,
+        })
+        break
+      case 'supplement':
+        this.setData({
+          showSupplement: true,
+          editingId: id,
+          editingKind: kind,
+          supplementName: item.name || 'AD',
+          supplementCustomName: '',
           timeValue: hm,
         })
         break

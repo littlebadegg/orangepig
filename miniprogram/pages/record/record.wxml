@@ -16,7 +16,7 @@
   <view class="card">
     <view class="row-between">
       <text class="card-title">一键记录</text>
-      <text class="score-link" wx:if="{{stats && stats.score}}" bindtap="goScore">今日评分 {{stats.score.total}} 分 · {{stats.score.level}} ›</text>
+      <text class="score-link" wx:if="{{stats && stats.score}}" bindtap="goScore">{{isToday ? '今日' : '当日'}}评分 {{stats.score.total}} 分 · {{stats.score.level}} ›</text>
     </view>
     <view class="actions">
       <view class="action action-feed" hover-class="action-hover" bindtap="openFeeding">
@@ -54,8 +54,27 @@
         <text class="action-label">体温</text>
       </view>
     </view>
+    <view class="actions actions-more">
+      <view class="action action-water" hover-class="action-hover" bindtap="openWater">
+        <text class="action-icon">🚰</text>
+        <text class="action-label">喂水</text>
+      </view>
+      <view class="action action-supplement" hover-class="action-hover" bindtap="openSupplement">
+        <text class="action-icon">💊</text>
+        <text class="action-label">喂养品</text>
+      </view>
+    </view>
     <view class="sleeping-tip" wx:if="{{ongoing}}">
       宝宝 {{ongoing.startText}} 入睡 · 已睡 {{sleepElapsed}}
+    </view>
+  </view>
+
+  <!-- ===== 今日醒目提醒（两顿奶没喂水 / AD没喂 / 自定义喂养项没喂） ===== -->
+  <view class="remind-list" wx:if="{{isToday && stats && stats.reminders.length > 0}}">
+    <view class="remind-item {{item.level === 'urgent' ? 'remind-urgent' : ''}}" wx:for="{{stats.reminders}}" wx:key="type" data-action="{{item.action}}" data-name="{{item.name}}" bindtap="onReminderTap" hover-class="remind-hover">
+      <text class="remind-icon">{{item.icon}}</text>
+      <text class="remind-text">{{item.text}}</text>
+      <text class="remind-btn">{{item.actionText}} ›</text>
     </view>
   </view>
 
@@ -137,10 +156,18 @@
     </view>
   </view>
 
-  <!-- ===== 今日记录 ===== -->
+  <!-- ===== 记录时间线（可切换历史日期） ===== -->
   <view class="card">
     <view class="row-between">
-      <text class="card-title">今日记录</text>
+      <view class="row date-row">
+        <picker mode="date" start="{{dateStart}}" end="{{todayEnd}}" value="{{viewDate}}" bindchange="onDateChange">
+          <view class="date-picker">
+            <text class="card-title">{{viewDateText}}</text>
+            <text class="date-arrow">📅</text>
+          </view>
+        </picker>
+        <text class="back-today" wx:if="{{!isToday}}" bindtap="goToday">回到今天</text>
+      </view>
       <text class="text-sub">{{list.length}} 条</text>
     </view>
 
@@ -165,6 +192,27 @@
     <view class="record-toggle" wx:if="{{list.length > 5}}" bindtap="onToggleRecords">
       {{showAllRecords ? '收起' : '展开全部 ' + list.length + ' 条'}}
       <text class="toggle-arrow">{{showAllRecords ? '↑' : '↓'}}</text>
+    </view>
+  </view>
+
+  <!-- ===== 养育小贴士（按宝宝天数，可折叠） ===== -->
+  <view class="card tips-card" wx:if="{{tips.length > 0}}">
+    <view class="row-between" bindtap="onToggleTips">
+      <text class="card-title">💡 养育小贴士{{stageText ? ' · ' + stageText : ''}}</text>
+      <text class="toggle-arrow">{{tipsExpanded ? '↑' : '↓'}}</text>
+    </view>
+    <block wx:if="{{tipsExpanded}}">
+      <view class="tips-group" wx:for="{{tips}}" wx:key="category" wx:for-item="group">
+        <view class="tips-group-title">{{group.icon}} {{group.label}}</view>
+        <view class="tips-item" wx:for="{{group.items}}" wx:key="id" wx:for-item="tip">
+          <text class="tips-item-title">{{tip.title}}</text>
+          <text class="tips-item-content">{{tip.content}}</text>
+        </view>
+      </view>
+      <view class="tips-source">参考：WHO儿童生长标准 / 中国居民膳食指南(2022)，个体差异请遵医嘱</view>
+    </block>
+    <view class="tips-preview" wx:else>
+      <text>{{tips[0].icon}} {{tips[0].label}} · {{tips[0].items[0].title}} 等 {{tips.length}} 类小贴士，点开查看</text>
     </view>
   </view>
 
@@ -355,6 +403,55 @@
     </picker>
 
     <view class="btn btn-primary btn-block sheet-btn" bindtap="submitBath">{{editingId ? '保存修改' : '确定记录'}}</view>
+  </view>
+
+  <!-- ===== 喂水弹窗 ===== -->
+  <view class="mask" wx:if="{{showWater}}" bindtap="closeWater"></view>
+  <view class="sheet" wx:if="{{showWater}}">
+    <view class="sheet-title">记录喂水</view>
+    <view class="sheet-close" bindtap="closeWater">✕</view>
+
+    <view class="sheet-label">水量（ml，可不填）</view>
+    <view class="chips">
+      <view class="chip {{waterAmount === item && !waterCustomAmount ? 'chip-active' : ''}}" wx:for="{{waterPresets}}" wx:key="*this" data-value="{{item}}" bindtap="setWaterAmount">{{item}}</view>
+      <view class="chip {{waterAmount === 0 && !waterCustomAmount ? 'chip-active' : ''}}" data-value="0" bindtap="setWaterAmount">只记喝了水</view>
+    </view>
+    <input class="input" type="number" placeholder="或输入自定义毫升数" value="{{waterCustomAmount}}" bindinput="onWaterAmountInput" />
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitWater">{{editingId ? '保存修改' : '确定记录'}}</view>
+  </view>
+
+  <!-- ===== 喂养品弹窗（AD / D3 / 自定义） ===== -->
+  <view class="mask" wx:if="{{showSupplement}}" bindtap="closeSupplement"></view>
+  <view class="sheet" wx:if="{{showSupplement}}">
+    <view class="sheet-title">记录喂养品</view>
+    <view class="sheet-close" bindtap="closeSupplement">✕</view>
+
+    <view class="sheet-label">喂的什么</view>
+    <view class="chips">
+      <view class="chip {{supplementName === item.name && !supplementCustomName ? 'chip-active' : ''}}" wx:for="{{supplementOptions}}" wx:key="name" data-name="{{item.name}}" bindtap="setSupplementName">{{item.label}}</view>
+    </view>
+    <input class="input" type="text" placeholder="或输入其他，例如 D3、钙" value="{{supplementCustomName}}" bindinput="onSupplementNameInput" />
+    <view class="sheet-tip">输入新名称确定后会保存为常用项，每天没喂会在首页提醒</view>
+
+    <view class="sheet-label">时间</view>
+    <picker mode="time" value="{{timeValue}}" bindchange="onTimeChange">
+      <view class="picker">{{timeValue}}</view>
+    </picker>
+
+    <view class="btn btn-primary btn-block sheet-btn" bindtap="submitSupplement">{{editingId ? '保存修改' : '确定记录'}}</view>
+
+    <view class="custom-manage" wx:if="{{customFeeds.length > 0}}">
+      <view class="custom-item" wx:for="{{customFeeds}}" wx:key="id">
+        <text>{{item.name}}</text>
+        <text class="custom-del" data-name="{{item.name}}" catchtap="onRemoveCustomFeed">删除</text>
+      </view>
+    </view>
   </view>
 
   <!-- ===== 睡眠编辑弹窗 ===== -->

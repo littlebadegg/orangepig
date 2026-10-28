@@ -53,6 +53,31 @@ function addBath(data) {
   return post('/records/bath', data)
 }
 
+/** 记一次喂水 { babyId, amount(选填), time, note } */
+function addWater(data) {
+  return post('/records/water', data)
+}
+
+/** 记一次喂养品 { babyId, name(AD|D3|自定义), time, note } */
+function addSupplement(data) {
+  return post('/records/supplement', data)
+}
+
+/** 自定义喂养项列表 */
+function listCustomFeeds() {
+  return get('/records/custom-feeds', {})
+}
+
+/** 添加自定义喂养项 { name } */
+function addCustomFeed(name) {
+  return post('/records/custom-feeds', { name })
+}
+
+/** 删除自定义喂养项 */
+function removeCustomFeed(id) {
+  return del(`/records/custom-feeds/${id}`)
+}
+
 /** 某天时间线 */
 function timeline(babyId, date) {
   return get('/records/timeline', { babyId, date })
@@ -78,6 +103,11 @@ function trend(babyId, days) {
   return get('/stats/trend', { babyId, days })
 }
 
+/** 养育小贴士（按宝宝天数） */
+function getTips(babyId) {
+  return get('/tips', { babyId })
+}
+
 module.exports = {
   addFeeding,
   addDiaper,
@@ -89,9 +119,15 @@ module.exports = {
   addTemperature,
   addSpitUp,
   addBath,
+  addWater,
+  addSupplement,
+  listCustomFeeds,
+  addCustomFeed,
+  removeCustomFeed,
   timeline,
   remove,
   update,
   dailyStats,
   trend,
+  getTips,
 }

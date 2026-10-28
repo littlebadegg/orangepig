@@ -570,6 +570,176 @@ const BathRecord = sequelize.define('BathRecord', {
   ],
 })
 
+/**
+ * 喂水记录
+ * 两顿奶之间喂水，帮助宝宝消化防便秘；amount 可以不记（只记「喝了水」）
+ */
+const WaterRecord = sequelize.define('WaterRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 喝水量（毫升），选填
+  amount: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'water_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+  ],
+})
+
+/**
+ * 喂养品记录（维生素AD / D3 / 钙等，名字可自定义）
+ * name='AD' 是内置提醒项：每天没喂就会在首页醒目提示
+ */
+const SupplementRecord = sequelize.define('SupplementRecord', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'user_id',
+  },
+  // 喂的什么：AD / D3 / 钙 / 自定义名
+  name: {
+    type: DataTypes.STRING(30),
+    allowNull: false,
+    defaultValue: 'AD',
+  },
+  time: {
+    type: DataTypes.DATE,
+    allowNull: false,
+  },
+  note: {
+    type: DataTypes.STRING(100),
+    defaultValue: '',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'supplement_records',
+  indexes: [
+    { fields: ['baby_id', 'time'] },
+    { fields: ['baby_id', 'name'] },
+  ],
+})
+
+/**
+ * 自定义喂养项配置（宝宝维度）
+ * 加了之后，每天没记录这个项就会在首页醒目提醒
+ */
+const CustomFeed = sequelize.define('CustomFeed', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    field: 'baby_id',
+  },
+  name: {
+    type: DataTypes.STRING(30),
+    allowNull: false,
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'custom_feeds',
+  indexes: [
+    { fields: ['baby_id'] },
+  ],
+})
+
+/**
+ * 养育小贴士（全局表，按宝宝天数区间匹配）
+ * category: feeding 奶量 / sleep 睡眠 / outdoor 户外 / growth 生长参考 /
+ *           supplement 营养补充 / development 大运动 / health 健康
+ * minDays~maxDays：宝宝出生后第几天适用（闭区间）
+ */
+const CareTip = sequelize.define('CareTip', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  category: {
+    type: DataTypes.STRING(20),
+    allowNull: false,
+  },
+  title: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+  },
+  content: {
+    type: DataTypes.STRING(500),
+    allowNull: false,
+  },
+  minDays: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    defaultValue: 0,
+    field: 'min_days',
+  },
+  maxDays: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    defaultValue: 99999,
+    field: 'max_days',
+  },
+  sortOrder: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: 'sort_order',
+  },
+  status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 1,
+  },
+}, {
+  tableName: 'care_tips',
+  indexes: [
+    { fields: ['min_days', 'max_days'] },
+  ],
+})
+
 // ============ 模型关联 ============
 
 // 用户 → 宝宝（一对多）
@@ -601,6 +771,15 @@ SpitUpRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 Baby.hasMany(BathRecord, { foreignKey: 'babyId', as: 'baths' })
 BathRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
 
+Baby.hasMany(WaterRecord, { foreignKey: 'babyId', as: 'waters' })
+WaterRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
+Baby.hasMany(SupplementRecord, { foreignKey: 'babyId', as: 'supplements' })
+SupplementRecord.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
+Baby.hasMany(CustomFeed, { foreignKey: 'babyId', as: 'customFeeds' })
+CustomFeed.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
+
 // 宝宝 ↔ 家庭成员（多对多中间表）
 Baby.hasMany(BabyMember, { foreignKey: 'babyId', as: 'members' })
 BabyMember.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby' })
@@ -616,6 +795,8 @@ User.hasMany(GrowthRecord, { foreignKey: 'userId', as: 'growths' })
 User.hasMany(TemperatureRecord, { foreignKey: 'userId', as: 'temperatures' })
 User.hasMany(SpitUpRecord, { foreignKey: 'userId', as: 'spitUps' })
 User.hasMany(BathRecord, { foreignKey: 'userId', as: 'baths' })
+User.hasMany(WaterRecord, { foreignKey: 'userId', as: 'waters' })
+User.hasMany(SupplementRecord, { foreignKey: 'userId', as: 'supplements' })
 
 module.exports = {
   sequelize,
@@ -631,4 +812,8 @@ module.exports = {
   TemperatureRecord,
   SpitUpRecord,
   BathRecord,
+  WaterRecord,
+  SupplementRecord,
+  CustomFeed,
+  CareTip,
 }

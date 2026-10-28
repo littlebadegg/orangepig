@@ -18,6 +18,9 @@ const {
   TemperatureRecord,
   SpitUpRecord,
   BathRecord,
+  WaterRecord,
+  SupplementRecord,
+  CustomFeed,
 } = require('../models')
 const {
   formatDate,
@@ -75,6 +78,11 @@ const FEVER_TEXT = {
 // 吐奶量：1 少量 / 2 中量 / 3 大量
 const SPIT_UP_LABEL = { 1: '少量', 2: '中量', 3: '大量' }
 
+/** 今天是否（YYYY-MM-DD 对比，东八区本地时间） */
+function isToday(day) {
+  return formatDate(day) === formatDate(new Date())
+}
+
 /**
  * 某天概览
  */
@@ -89,7 +97,7 @@ router.get('/daily', auth, async (req, res, next) => {
     const from = startOfDay(day)
     const to = endOfDay(day)
 
-    const [feedings, diapers, sleeps, exercises, temperatures, spitUps, baths] = await Promise.all([
+    const [feedings, diapers, sleeps, exercises, temperatures, spitUps, baths, waters, supplements] = await Promise.all([
       FeedingRecord.findAll({
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         order: [['time', 'ASC']],
@@ -124,6 +132,16 @@ router.get('/daily', auth, async (req, res, next) => {
         raw: true,
       }),
       BathRecord.findAll({
+        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+      WaterRecord.findAll({
+        where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+        order: [['time', 'DESC']],
+        raw: true,
+      }),
+      SupplementRecord.findAll({
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         order: [['time', 'DESC']],
         raw: true,
@@ -246,6 +264,61 @@ router.get('/daily', auth, async (req, res, next) => {
       measuredAt = latestWeightRow.time
     }
 
+    // ========== 喂水 / 喂养品统计 ==========
+    const waterTotal = waters.reduce((sum, w) => sum + (w.amount || 0), 0)
+    const lastWater = waters[0] || null
+    const supplementNames = supplements.map((s) => s.name)
+    const hasAd = supplementNames.includes('AD')
+
+    // ========== 今日醒目提醒 ==========
+    // 仅当天才有提醒；历史日期是回看，不需要提醒
+    const reminders = []
+    if (isToday(day)) {
+      // 1. 喝了两顿奶还没喂水 → 必须喂水
+      if (formulaList.length >= 2 && waters.length === 0) {
+        reminders.push({
+          type: 'water',
+          level: 'urgent',
+          icon: '🚰',
+          text: `已喂 ${formulaList.length} 顿奶还没喂水，两顿奶之间要喂点水哦`,
+          action: 'water',
+          actionText: '去喂水',
+        })
+      }
+
+      // 2. 今天维生素AD还没喂
+      if (!hasAd) {
+        reminders.push({
+          type: 'ad',
+          level: 'urgent',
+          icon: '💊',
+          text: '今天的维生素AD还没喂',
+          action: 'supplement',
+          actionText: '去喂AD',
+        })
+      }
+
+      // 3. 自定义喂养项今天没喂的逐个提醒
+      const customFeeds = await CustomFeed.findAll({
+        where: { babyId: baby.id, status: 1 },
+        order: [['id', 'ASC']],
+        raw: true,
+      })
+      customFeeds.forEach((c) => {
+        if (!supplementNames.includes(c.name)) {
+          reminders.push({
+            type: 'custom',
+            level: 'normal',
+            icon: '💊',
+            text: `今天的「${c.name}」还没喂`,
+            action: 'supplement',
+            actionText: '去记录',
+            name: c.name,
+          })
+        }
+      })
+    }
+
     res.apiSuccess({
       date: formatDate(day),
       feeding: {
@@ -310,6 +383,20 @@ router.get('/daily', auth, async (req, res, next) => {
         lastText: lastBath ? formatTime(lastBath.time) : '',
         lastWaterTemp: lastBath ? toNum(lastBath.waterTemp) : null,
       },
+      water: {
+        count: waters.length,
+        totalAmount: waterTotal,
+        lastText: lastWater ? formatTime(lastWater.time) : '',
+        lastAmount: lastWater ? lastWater.amount : null,
+      },
+      supplement: {
+        count: supplements.length,
+        names: supplementNames,
+        hasAd,
+        lastText: supplements.length > 0 ? formatTime(supplements[0].time) : '',
+      },
+      // 今日醒目提醒（喂水 / AD / 自定义喂养项），历史日期为空数组
+      reminders,
       // 每日养育评分（0~100，含各维度得分、加减分明细与建议）
       score: computeScore({
         feedings,

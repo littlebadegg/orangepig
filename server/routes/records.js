@@ -9,10 +9,15 @@
  * POST   /api/records/exercise     — 记一次排气操（时长分钟 + 是否排气）
  * POST   /api/records/growth       — 记一次身高 / 体重
  * POST   /api/records/temperature  — 记一次体温
+ * POST   /api/records/water        — 记一次喂水（毫升选填）
+ * POST   /api/records/supplement   — 记一次喂养品（AD / D3 / 自定义名）
+ * GET    /api/records/custom-feeds    — 自定义喂养项列表
+ * POST   /api/records/custom-feeds    — 添加自定义喂养项（当天没喂会醒目提醒）
+ * DELETE /api/records/custom-feeds/:id — 删除自定义喂养项
  * GET    /api/records/timeline     — 某天的时间线（默认今天）
  * PUT    /api/records/:type/:id    — 修改记录
  * DELETE /api/records/:type/:id    — 删除记录
- *        type: feeding|diaper|sleep|exercise|growth|temperature|spitup|bath
+ *        type: feeding|diaper|sleep|exercise|growth|temperature|spitup|bath|water|supplement
  */
 const express = require('express')
 const { Op } = require('sequelize')
@@ -28,6 +33,9 @@ const {
   TemperatureRecord,
   SpitUpRecord,
   BathRecord,
+  WaterRecord,
+  SupplementRecord,
+  CustomFeed,
 } = require('../models')
 const {
   formatDateTime,
@@ -559,6 +567,180 @@ router.post('/bath', auth, async (req, res, next) => {
   }
 })
 
+// ============ 喂水记录 ============
+
+/**
+ * 记一次喂水
+ * body: { babyId, amount(毫升,选填), time, note }
+ */
+router.post('/water', auth, async (req, res, next) => {
+  try {
+    const { note } = req.body
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const amount =
+      req.body.amount !== undefined && req.body.amount !== ''
+        ? parseInt(req.body.amount)
+        : null
+    if (amount !== null && (isNaN(amount) || amount <= 0 || amount > 500)) {
+      return res.apiError('水量请填写 1~500 之间的数值（ml）', 400, 400)
+    }
+
+    const time = parseTime(req.body.time)
+
+    const record = await WaterRecord.create({
+      babyId: baby.id,
+      userId: req.userId,
+      amount,
+      time,
+      note: note || '',
+    })
+
+    res.apiSuccess({
+      id: record.id,
+      amount: record.amount,
+      timeText: formatTime(record.time),
+      timeFull: formatDateTime(record.time),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ============ 喂养品记录（AD / D3 / 自定义） ============
+
+/** 名称归一化：前后空格 + 最长 30 字；「维生素AD」统一成 AD */
+function normalizeSupplementName(raw) {
+  let name = String(raw || '').trim().slice(0, 30)
+  if (!name) return ''
+  if (name === '维生素AD' || name === '维生素AD滴剂' || name.toLowerCase() === 'ad') {
+    name = 'AD'
+  }
+  return name
+}
+
+/**
+ * 记一次喂养品
+ * body: { babyId, name(AD|D3|自定义), time, note }
+ */
+router.post('/supplement', auth, async (req, res, next) => {
+  try {
+    const { note } = req.body
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const name = normalizeSupplementName(req.body.name)
+    if (!name) {
+      return res.apiError('请选择或输入喂的什么（如 AD）', 400, 400)
+    }
+
+    const time = parseTime(req.body.time)
+
+    const record = await SupplementRecord.create({
+      babyId: baby.id,
+      userId: req.userId,
+      name,
+      time,
+      note: note || '',
+    })
+
+    res.apiSuccess({
+      id: record.id,
+      name: record.name,
+      timeText: formatTime(record.time),
+      timeFull: formatDateTime(record.time),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ============ 自定义喂养项配置 ============
+
+/**
+ * 自定义喂养项列表（宝宝维度）
+ * GET /api/records/custom-feeds
+ */
+router.get('/custom-feeds', auth, async (req, res, next) => {
+  try {
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const list = await CustomFeed.findAll({
+      where: { babyId: baby.id, status: 1 },
+      order: [['id', 'ASC']],
+    })
+
+    res.apiSuccess({
+      list: list.map((c) => ({ id: c.id, name: c.name })),
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+/**
+ * 添加自定义喂养项（之后每天没喂会在首页醒目提醒）
+ * body: { name }
+ */
+router.post('/custom-feeds', auth, async (req, res, next) => {
+  try {
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const name = normalizeSupplementName(req.body.name)
+    if (!name) {
+      return res.apiError('请输入喂养项名称', 400, 400)
+    }
+
+    const existing = await CustomFeed.findOne({
+      where: { babyId: baby.id, name, status: 1 },
+    })
+    if (existing) {
+      return res.apiSuccess({ id: existing.id, name: existing.name, existed: true })
+    }
+
+    const item = await CustomFeed.create({ babyId: baby.id, name })
+    res.apiSuccess({ id: item.id, name: item.name, existed: false })
+  } catch (err) {
+    next(err)
+  }
+})
+
+/**
+ * 删除自定义喂养项（软删，之后不再提醒）
+ * DELETE /api/records/custom-feeds/:id
+ */
+router.delete('/custom-feeds/:id', auth, async (req, res, next) => {
+  try {
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const item = await CustomFeed.findOne({
+      where: { id: req.params.id, babyId: baby.id, status: 1 },
+    })
+    if (!item) {
+      return res.apiError('喂养项不存在', 404, 404)
+    }
+
+    await item.update({ status: 0 })
+    res.apiSuccess({ id: item.id })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // ============ 时间线 ============
 
 /**
@@ -576,7 +758,7 @@ router.get('/timeline', auth, async (req, res, next) => {
     const from = startOfDay(day)
     const to = endOfDay(day)
 
-    const [feedings, diapers, sleeps, exercises, growths, temperatures, spitUps, baths, recorderMap] =
+    const [feedings, diapers, sleeps, exercises, growths, temperatures, spitUps, baths, waters, supplements, recorderMap] =
       await Promise.all([
         FeedingRecord.findAll({
           where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
@@ -612,6 +794,14 @@ router.get('/timeline', auth, async (req, res, next) => {
           raw: true,
         }),
         BathRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        WaterRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        SupplementRecord.findAll({
           where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
           raw: true,
         }),
@@ -781,6 +971,41 @@ router.get('/timeline', auth, async (req, res, next) => {
       })
     })
 
+    waters.forEach((r) => {
+      const t = new Date(r.time).getTime()
+      list.push({
+        id: r.id,
+        kind: 'water',
+        icon: '🚰',
+        title: r.amount ? `喂水 ${r.amount}ml` : '喂水',
+        subtitle: '喂水',
+        amount: r.amount,
+        note: r.note || '',
+        recorder: recorder(r),
+        timeText: formatTime(r.time),
+        timeFull: formatDateTime(r.time),
+        sortKey: t,
+      })
+    })
+
+    supplements.forEach((r) => {
+      const t = new Date(r.time).getTime()
+      const label = r.name === 'AD' ? '维生素AD' : r.name
+      list.push({
+        id: r.id,
+        kind: 'supplement',
+        icon: '💊',
+        title: label,
+        subtitle: '喂养品',
+        name: r.name,
+        note: r.note || '',
+        recorder: recorder(r),
+        timeText: formatTime(r.time),
+        timeFull: formatDateTime(r.time),
+        sortKey: t,
+      })
+    })
+
     // 最新的排最上面
     list.sort((a, b) => b.sortKey - a.sortKey)
 
@@ -827,6 +1052,8 @@ router.put('/:type/:id', auth, async (req, res, next) => {
       temperature: TemperatureRecord,
       spitup: SpitUpRecord,
       bath: BathRecord,
+      water: WaterRecord,
+      supplement: SupplementRecord,
     }
     const Model = modelMap[type]
     if (!Model) {
@@ -948,6 +1175,33 @@ router.put('/:type/:id', auth, async (req, res, next) => {
         break
       }
 
+      case 'water': {
+        if (body.amount !== undefined) {
+          const raw = body.amount
+          if (raw === null || raw === '' || parseInt(raw) === 0) {
+            patch.amount = null
+          } else {
+            const a = parseInt(raw)
+            if (isNaN(a) || a <= 0 || a > 500) {
+              return res.apiError('水量请填写 1~500 之间的数值（ml）', 400, 400)
+            }
+            patch.amount = a
+          }
+        }
+        break
+      }
+
+      case 'supplement': {
+        if (body.name !== undefined) {
+          const name = normalizeSupplementName(body.name)
+          if (!name) {
+            return res.apiError('请选择或输入喂的什么（如 AD）', 400, 400)
+          }
+          patch.name = name
+        }
+        break
+      }
+
       case 'bath': {
         if (body.duration !== undefined) {
           const raw = body.duration
@@ -1022,6 +1276,8 @@ router.delete('/:type/:id', auth, async (req, res, next) => {
       temperature: TemperatureRecord,
       spitup: SpitUpRecord,
       bath: BathRecord,
+      water: WaterRecord,
+      supplement: SupplementRecord,
     }
     const Model = modelMap[type]
     if (!Model) {

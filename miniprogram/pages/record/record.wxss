@@ -556,3 +556,160 @@
   margin-left: 8rpx;
   font-size: 24rpx;
 }
+
+/* ===== 喂水 / 喂养品按钮 ===== */
+.action-water {
+  background: #e8f7ff;
+  border-color: #b8e6ff;
+}
+
+.action-supplement {
+  background: #f3efff;
+  border-color: #d8ccff;
+}
+
+/* ===== 今日醒目提醒 ===== */
+.remind-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin: 0 24rpx 20rpx;
+}
+
+.remind-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 22rpx 24rpx;
+  border-radius: 14rpx;
+  background: #fff7e6;
+  border: 1rpx solid #ffe1a8;
+}
+
+.remind-urgent {
+  background: #fff1f0;
+  border-color: #ffccc7;
+}
+
+.remind-icon {
+  font-size: 34rpx;
+  margin-right: 14rpx;
+}
+
+.remind-text {
+  flex: 1;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #d46b08;
+}
+
+.remind-urgent .remind-text {
+  color: #e34d59;
+}
+
+.remind-btn {
+  font-size: 25rpx;
+  color: #ff7a45;
+  font-weight: 600;
+  margin-left: 12rpx;
+}
+
+.remind-hover {
+  opacity: 0.8;
+}
+
+/* ===== 日期切换 ===== */
+.date-row {
+  gap: 16rpx;
+}
+
+.date-picker {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.date-arrow {
+  margin-left: 10rpx;
+  font-size: 26rpx;
+}
+
+.back-today {
+  font-size: 24rpx;
+  color: #fff;
+  background: #ff7a45;
+  padding: 6rpx 18rpx;
+  border-radius: 24rpx;
+}
+
+/* ===== 养育小贴士 ===== */
+.tips-card .toggle-arrow {
+  color: #ff7a45;
+}
+
+.tips-preview {
+  margin-top: 16rpx;
+  font-size: 25rpx;
+  color: #b58b6f;
+}
+
+.tips-group {
+  margin-top: 24rpx;
+}
+
+.tips-group-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #ff9a5c;
+  margin-bottom: 12rpx;
+}
+
+.tips-item {
+  background: #fff8f2;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 12rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.tips-item-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #6d4c33;
+}
+
+.tips-item-content {
+  font-size: 24rpx;
+  color: #8a7462;
+  line-height: 1.6;
+  margin-top: 6rpx;
+}
+
+.tips-source {
+  margin-top: 16rpx;
+  font-size: 20rpx;
+  color: #c0a896;
+}
+
+/* ===== 自定义喂养项管理 ===== */
+.custom-manage {
+  margin-top: 24rpx;
+  border-top: 1rpx solid #f0e6dc;
+  padding-top: 16rpx;
+}
+
+.custom-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 8rpx;
+  font-size: 26rpx;
+  color: #6d4c33;
+}
+
+.custom-del {
+  font-size: 24rpx;
+  color: #e34d59;
+}

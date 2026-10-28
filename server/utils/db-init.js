@@ -24,7 +24,12 @@ const {
   TemperatureRecord,
   SpitUpRecord,
   BathRecord,
+  WaterRecord,
+  SupplementRecord,
+  CustomFeed,
+  CareTip,
 } = require('../models')
+const CARE_TIPS = require('./care-tips-data')
 
 /** 连接 MySQL 实例（不指定库名）创建数据库 */
 async function ensureDatabase() {
@@ -87,6 +92,23 @@ async function backfillSharing() {
       })
     }
   }
+}
+
+/**
+ * 养育小贴士 seed（幂等）
+ * 按标题判断：库里已有同名 tip 就跳过，方便以后增改内容
+ */
+async function seedCareTips() {
+  const existing = await CareTip.count()
+  if (existing >= CARE_TIPS.length) return
+
+  for (const tip of CARE_TIPS) {
+    const found = await CareTip.findOne({ where: { title: tip.title, minDays: tip.minDays } })
+    if (!found) {
+      await CareTip.create(tip)
+    }
+  }
+  console.log(`[DB] 养育小贴士已同步（共 ${CARE_TIPS.length} 条）`)
 }
 
 /** 插入演示数据（仅在首次运行时） */
@@ -222,6 +244,7 @@ async function initDatabase(opts = {}) {
   console.log('[DB] 数据表已同步')
 
   await backfillSharing()
+  await seedCareTips()
 
   if (seedDemo) {
     await seed()

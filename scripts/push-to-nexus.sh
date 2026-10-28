@@ -15,8 +15,9 @@ set -euo pipefail
 
 # ===================== 配置：改成你实际的 =====================
 NEXUS_HOST="registry.grindsword.top"
-# 端口：HTTPS 默认 443 留空即可；若用 HTTP 80 则填 "80"
-NEXUS_PORT="443"
+# 端口：留空即走默认 443 HTTPS（推荐，镜像名不带端口，与本机 keychain 凭证一致）
+# 若用 HTTP 80 则填 "80"
+NEXUS_PORT=""
 # Nexus 里 Docker 仓库（repository）的名字 —— 改成你实际的！常见默认 docker-hosted
 NEXUS_REPO="docker-hosted"
 IMAGE_NAME="orangepig-server"
