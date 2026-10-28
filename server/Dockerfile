@@ -17,6 +17,11 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
+# 时区设置为中国时区（放在最前面，独立成层 —— 不受源码变更影响，永远走缓存）
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo "Asia/Shanghai" > /etc/timezone
+
 # 安装生产依赖
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
@@ -26,11 +31,6 @@ COPY --from=builder /app ./
 
 # 创建上传目录
 RUN mkdir -p uploads
-
-# 时区设置为中国时区
-RUN apk add --no-cache tzdata && \
-    cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
-    echo "Asia/Shanghai" > /etc/timezone
 
 ENV NODE_ENV=production
 ENV TZ=Asia/Shanghai
