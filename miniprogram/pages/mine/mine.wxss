@@ -295,3 +295,12 @@
   color: #ccc;
   font-size: 32rpx;
 }
+
+/* 游客登录引导 */
+.guest-tip {
+  display: block;
+  font-size: 26rpx;
+  color: #8a7462;
+  line-height: 1.7;
+  margin: 12rpx 0 20rpx;
+}

@@ -4,6 +4,7 @@
 const babyService = require('../../services/baby')
 const recordService = require('../../services/record')
 const { nowString, todayString, formatDuration, genderText, normalizeStats } = require('../../utils/format')
+const { recordDemo } = require('../../utils/demo-data')
 
 // 快捷选项
 const AMOUNT_PRESETS = [60, 90, 120, 150, 180, 210]
@@ -128,6 +129,8 @@ Page({
     waterPresets: WATER_PRESETS,
     loading: true,
     submitting: false,
+    // 游客模式：未登录先浏览示例数据，登录由用户主动触发（微信审核合规要求）
+    guest: false,
     // 今日记录折叠：默认只展示前 5 条
     showAllRecords: false,
   },
@@ -138,16 +141,17 @@ Page({
   timer: null,
 
   onLoad() {
-    // 启动直达首页：没登录才去登录页
-    if (!wx.getStorageSync('access_token')) {
-      wx.reLaunch({ url: '/pages/login/login' })
-      return
-    }
     this.setData({ timeValue: currentHM(), viewDate: todayString(), todayEnd: todayString() })
+    // 游客模式：未登录直接进首页浏览示例数据，不强制跳登录页（微信审核合规要求）
+    if (!wx.getStorageSync('access_token')) {
+      this.enterGuest()
+    }
   },
 
   onShow() {
+    // 游客模式（无 token）下不请求后端；从登录页登录成功后 reLaunch 回来会重新走 onLoad
     if (!wx.getStorageSync('access_token')) return
+    if (this.data.guest) this.setData({ guest: false })
     this.refresh()
     this.startTimer()
   },
@@ -161,7 +165,53 @@ Page({
   },
 
   onPullDownRefresh() {
+    if (this.data.guest || !wx.getStorageSync('access_token')) {
+      wx.stopPullDownRefresh()
+      return
+    }
     this.refresh().then(() => wx.stopPullDownRefresh())
+  },
+
+  // ============ 游客模式 ============
+
+  /** 未登录：加载本地演示数据，让用户先浏览体验功能 */
+  enterGuest() {
+    const demo = recordDemo()
+    this.setData({
+      guest: true,
+      loading: false,
+      babies: [],
+      currentBabyId: null,
+      currentBaby: demo.currentBaby,
+      babySubtitle: demo.babySubtitle,
+      stats: normalizeStats(demo.stats),
+      list: demo.list.map((item) => ({ ...item, key: `demo_${item.id}` })),
+      ongoing: null,
+      tips: demo.tips,
+      stageText: demo.stageText,
+      viewDateText: '今日记录',
+      isToday: true,
+      customFeeds: [],
+      supplementOptions: [{ name: 'AD', label: '维生素AD' }],
+    })
+  },
+
+  /** 游客点保存/操作类动作 → 引导登录（不强制，可继续浏览） */
+  needLogin() {
+    wx.showModal({
+      title: '需要登录',
+      content: '登录后即可记录自家宝宝，现在去登录吗？',
+      confirmText: '去登录',
+      cancelText: '再逛逛',
+      success: (res) => {
+        if (res.confirm) this.goLogin()
+      },
+    })
+  },
+
+  /** 跳登录页（用户主动登录） */
+  goLogin() {
+    wx.navigateTo({ url: '/pages/login/login' })
   },
 
   // ============ 数据加载 ============
@@ -315,6 +365,10 @@ Page({
   },
 
   onSwitchBaby() {
+    if (this.data.guest) {
+      this.needLogin()
+      return
+    }
     const { babies } = this.data
     if (!babies || babies.length === 0) {
       wx.showToast({ title: '还没有宝宝，去「我的」添加', icon: 'none' })
@@ -382,6 +436,7 @@ Page({
   },
 
   async submitFeeding() {
+    if (this.data.guest) { this.needLogin(); return }
     const { feedingType, amount, customAmount, duration, timeValue, currentBabyId } = this.data
 
     const finalAmount = customAmount ? parseInt(customAmount) : amount
@@ -449,6 +504,7 @@ Page({
   },
 
   async submitDiaper() {
+    if (this.data.guest) { this.needLogin(); return }
     const { diaperType, timeValue, currentBabyId } = this.data
     const labelMap = { pee: '小便', poo: '大便', both: '大小便' }
 
@@ -507,6 +563,7 @@ Page({
   },
 
   async submitExercise() {
+    if (this.data.guest) { this.needLogin(); return }
     const { exerciseDuration, exerciseResult, timeValue, currentBabyId } = this.data
 
     if (!exerciseDuration || exerciseDuration <= 0) {
@@ -575,6 +632,7 @@ Page({
   },
 
   async submitGrowth() {
+    if (this.data.guest) { this.needLogin(); return }
     const { height, weight, timeValue, currentBabyId } = this.data
 
     const h = height === '' ? null : parseFloat(height)
@@ -659,6 +717,7 @@ Page({
   },
 
   async submitTemperature() {
+    if (this.data.guest) { this.needLogin(); return }
     const { temperature, customTemperature, tempMethod, timeValue, currentBabyId } = this.data
 
     const t = customTemperature ? parseFloat(customTemperature) : temperature
@@ -722,6 +781,7 @@ Page({
   },
 
   async submitSpitUp() {
+    if (this.data.guest) { this.needLogin(); return }
     const { spitUpLevel, timeValue, currentBabyId } = this.data
 
     const isEdit = !!this.data.editingId
@@ -782,6 +842,7 @@ Page({
   },
 
   async submitBath() {
+    if (this.data.guest) { this.needLogin(); return }
     const { bathDuration, bathWaterTemp, timeValue, currentBabyId } = this.data
 
     const temp = bathWaterTemp === '' ? null : parseFloat(bathWaterTemp)
@@ -851,6 +912,7 @@ Page({
   },
 
   async submitWater() {
+    if (this.data.guest) { this.needLogin(); return }
     const { waterAmount, waterCustomAmount, timeValue, currentBabyId } = this.data
 
     // 输入框优先；都没填就是「只记喝了水，不记毫升」
@@ -918,6 +980,7 @@ Page({
   },
 
   async submitSupplement() {
+    if (this.data.guest) { this.needLogin(); return }
     const { supplementName, supplementCustomName, timeValue, currentBabyId } = this.data
 
     const name = (supplementCustomName || supplementName || '').trim()
@@ -1004,7 +1067,10 @@ Page({
   // ============ 睡觉 ============
 
   async onSleepTap() {
-    if (!this.checkBaby()) return
+    if (this.data.guest) {
+      this.needLogin()
+      return
+    }
     const { ongoing, currentBabyId } = this.data
 
     if (ongoing) {
@@ -1178,6 +1244,7 @@ Page({
   },
 
   async submitSleepEdit() {
+    if (this.data.guest) { this.needLogin(); return }
     const { sleepStart, sleepEnd, editingId } = this.data
     if (!sleepStart || !sleepEnd) {
       wx.showToast({ title: '请选择起止时间', icon: 'none' })
@@ -1221,6 +1288,10 @@ Page({
   // ============ 删除记录 ============
 
   onDeleteRecord(e) {
+    if (this.data.guest) {
+      this.needLogin()
+      return
+    }
     const { kind, id } = e.currentTarget.dataset
     wx.showModal({
       title: '删除记录',
@@ -1241,6 +1312,8 @@ Page({
   // ============ 工具 ============
 
   checkBaby() {
+    // 游客模式放行弹窗浏览（体验功能），提交时再引导登录
+    if (this.data.guest) return true
     if (!this.data.currentBabyId) {
       wx.showToast({ title: '请先添加宝宝', icon: 'none' })
       return false

@@ -46,6 +46,11 @@ Page({
     this.setData({ agreed: !this.data.agreed })
   },
 
+  /** 先逛逛：不登录回首页浏览示例数据（微信审核合规：先体验后登录） */
+  goBrowse() {
+    wx.reLaunch({ url: '/pages/record/record' })
+  },
+
   /** 查看《用户服务协议》全文 */
   openUserAgreement() {
     wx.navigateTo({ url: '/pages/agreement/agreement?type=user' })

@@ -36,10 +36,23 @@ Page({
     joinRelationIndex: 1,
 
     submitting: false,
+
+    // 游客模式：未登录只展示登录引导
+    guest: false,
   },
 
   onShow() {
+    // 游客模式：未登录不请求后端
+    if (!wx.getStorageSync('access_token')) {
+      this.setData({ guest: true, babies: [], currentBabyId: null })
+      return
+    }
     this.refresh()
+  },
+
+  /** 游客模式去登录 */
+  goLogin() {
+    wx.navigateTo({ url: '/pages/login/login' })
   },
 
   async refresh() {

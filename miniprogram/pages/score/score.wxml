@@ -1,13 +1,20 @@
 <view class="page">
 
+  <!-- ===== 游客模式 ===== -->
+  <view class="card empty-card" wx:if="{{guest}}">
+    <text class="empty-icon">⭐</text>
+    <text>登录后可查看宝宝的每日养育评分</text>
+    <view class="btn btn-primary go-btn" bindtap="goLogin">微信一键登录</view>
+  </view>
+
   <!-- ===== 未添加宝宝 ===== -->
-  <view class="card empty-card" wx:if="{{!loading && !currentBaby}}">
+  <view class="card empty-card" wx:if="{{!loading && !guest && !currentBaby}}">
     <text class="empty-icon">👶</text>
     <text>还没有添加宝宝</text>
     <view class="btn btn-primary go-btn" bindtap="goMine">去添加</view>
   </view>
 
-  <block wx:if="{{currentBaby}}">
+  <block wx:if="{{!guest && currentBaby}}">
     <!-- ===== 总分 ===== -->
     <view class="card score-hero" wx:if="{{score}}">
       <view class="hero-top">

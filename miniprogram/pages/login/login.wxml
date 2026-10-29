@@ -37,5 +37,8 @@
         <text class="agree-link" catchtap="openPrivacyAgreement">《隐私政策》</text>
       </view>
     </view>
+
+    <!-- 先浏览体验，登录由用户稍后主动触发 -->
+    <view class="browse-link" bindtap="goBrowse">先逛逛，稍后再登录 ›</view>
   </view>
 </view>

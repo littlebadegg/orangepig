@@ -1,7 +1,17 @@
 <view class="page">
 
+  <!-- ===== 游客模式：登录引导 ===== -->
+  <view class="card" wx:if="{{guest}}">
+    <view class="row-between">
+      <text class="card-title">账号</text>
+      <text class="text-sub">未登录</text>
+    </view>
+    <text class="guest-tip">登录后可以添加宝宝、一键记录喂养睡眠，还能分享给家人一起记录</text>
+    <view class="btn btn-primary btn-block go-btn" bindtap="goLogin">微信一键登录</view>
+  </view>
+
   <!-- ===== 头部 ===== -->
-  <view class="user-bar">
+  <view class="user-bar" wx:if="{{!guest}}">
     <view class="user-avatar">🐷</view>
     <view class="col">
       <text class="user-name">橙猪宝宝记</text>
@@ -10,7 +20,7 @@
   </view>
 
   <!-- ===== 宝宝列表 ===== -->
-  <view class="card">
+  <view class="card" wx:if="{{!guest}}">
     <view class="row-between">
       <text class="card-title">我的宝宝</text>
       <view class="row">
@@ -64,7 +74,7 @@
   </view>
 
   <!-- ===== 账号 ===== -->
-  <view class="card">
+  <view class="card" wx:if="{{!guest}}">
     <view class="row-between">
       <text class="card-title">账号</text>
       <text class="text-sub">微信登录</text>

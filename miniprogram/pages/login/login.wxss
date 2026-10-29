@@ -135,3 +135,11 @@
   color: #ff7a45;
   padding: 8rpx 0;
 }
+
+/* 先逛逛链接 */
+.browse-link {
+  margin-top: 28rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #b58b6f;
+}

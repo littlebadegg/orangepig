@@ -1,6 +1,13 @@
 <view class="page">
 
-  <view class="baby-bar">
+  <!-- ===== 游客模式 ===== -->
+  <view class="card" wx:if="{{guest}}" style="align-items: center;">
+    <text class="empty-icon">📊</text>
+    <text>登录后可查看宝宝的生长数据统计</text>
+    <view class="btn btn-primary go-btn" bindtap="goLogin">微信一键登录</view>
+  </view>
+
+  <view class="baby-bar" wx:if="{{!guest}}">
     <view class="row">
       <view class="baby-avatar">📊</view>
       <view class="col baby-meta">
@@ -147,7 +154,7 @@
     </view>
   </view>
 
-  <view class="empty" wx:if="{{!stats}}">
+  <view class="empty" wx:if="{{!guest && !stats}}">
     <text class="empty-icon">📊</text>
     <text>还没有数据，先去记录一条吧</text>
     <view class="btn btn-primary go-btn" bindtap="goRecord">去记录</view>

@@ -1,5 +1,14 @@
 <view class="page">
 
+  <!-- ===== 游客欢迎（未登录时展示示例数据供体验，登录由用户主动点击） ===== -->
+  <view class="guest-banner" wx:if="{{guest}}">
+    <view class="guest-row">
+      <text class="guest-emoji">👋</text>
+      <text class="guest-text">欢迎体验橙猪宝宝记！现在看到的是示例数据，登录后即可记录自家宝宝</text>
+    </view>
+    <button class="guest-login-btn" bindtap="goLogin">微信一键登录</button>
+  </view>
+
   <!-- ===== 宝宝栏 ===== -->
   <view class="baby-bar">
     <view class="row">

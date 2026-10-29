@@ -17,6 +17,7 @@ function todayCN() {
 Page({
   data: {
     loading: true,
+    guest: false,
     babies: [],
     currentBabyId: null,
     currentBaby: null,
@@ -25,10 +26,19 @@ Page({
   },
 
   onShow() {
+    // 游客模式：未登录不请求后端，展示登录引导
+    if (!wx.getStorageSync('access_token')) {
+      this.setData({ guest: true, loading: false, score: null, currentBaby: null })
+      return
+    }
     this.refresh()
   },
 
   onPullDownRefresh() {
+    if (this.data.guest || !wx.getStorageSync('access_token')) {
+      wx.stopPullDownRefresh()
+      return
+    }
     this.refresh().then(() => wx.stopPullDownRefresh())
   },
 
@@ -58,5 +68,10 @@ Page({
 
   goMine() {
     wx.switchTab({ url: '/pages/mine/mine' })
+  },
+
+  /** 游客模式去登录 */
+  goLogin() {
+    wx.navigateTo({ url: '/pages/login/login' })
   },
 })

@@ -14,13 +14,23 @@ Page({
     trend: [],
     days: 7,
     loading: true,
+    guest: false,
   },
 
   onShow() {
+    // 游客模式：未登录不请求后端，展示登录引导
+    if (!wx.getStorageSync('access_token')) {
+      this.setData({ guest: true, loading: false, stats: null, trend: [] })
+      return
+    }
     this.refresh()
   },
 
   onPullDownRefresh() {
+    if (this.data.guest || !wx.getStorageSync('access_token')) {
+      wx.stopPullDownRefresh()
+      return
+    }
     this.refresh().then(() => wx.stopPullDownRefresh())
   },
 
@@ -66,5 +76,10 @@ Page({
 
   goRecord() {
     wx.switchTab({ url: '/pages/record/record' })
+  },
+
+  /** 游客模式去登录 */
+  goLogin() {
+    wx.navigateTo({ url: '/pages/login/login' })
   },
 })
