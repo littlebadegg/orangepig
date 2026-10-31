@@ -446,7 +446,8 @@
     <view class="chips">
       <view class="chip {{supplementName === item.name && !supplementCustomName ? 'chip-active' : ''}}" wx:for="{{supplementOptions}}" wx:key="name" data-name="{{item.name}}" bindtap="setSupplementName">{{item.label}}</view>
     </view>
-    <input class="input" type="text" placeholder="或输入其他，例如 D3、钙" value="{{supplementCustomName}}" bindinput="onSupplementNameInput" />
+    <input class="input" type="text" placeholder="或输入其他，例如 钙、益生菌" value="{{supplementCustomName}}" bindinput="onSupplementNameInput" />
+    <view class="sheet-tip">维生素AD 和 D3 是同一种，吃一种就可以（每天只会提醒一次）</view>
     <view class="sheet-tip">输入新名称确定后会保存为常用项，每天没喂会在首页提醒</view>
 
     <view class="sheet-label">时间</view>

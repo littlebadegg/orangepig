@@ -28,6 +28,19 @@ const TEMP_METHODS = [
 // 发烧阈值（与后端一致）
 const FEVER_THRESHOLD = 37.3
 
+// 维生素 AD / D3 属于同一类，吃一种就够 —— 提醒合并成一条
+const SUPPLEMENT_BASE_OPTIONS = [
+  { name: 'AD', label: '维生素AD' },
+  { name: 'D3', label: '维生素D3' },
+]
+const VITAMIN_D_NAMES = ['AD', 'D3', 'VD', '维生素AD', '维生素D', '维生素D3']
+const SUPPLEMENT_LABEL = { AD: '维生素AD', D3: '维生素D3' }
+
+function isVitaminDName(name) {
+  const n = String(name || '').trim().toUpperCase()
+  return !!n && VITAMIN_D_NAMES.some((x) => x.toUpperCase() === n)
+}
+
 /** 当前时间的 HH:mm */
 function currentHM() {
   const now = new Date()
@@ -72,7 +85,7 @@ Page({
     showSupplement: false,
     supplementName: 'AD',
     supplementCustomName: '',
-    supplementOptions: [{ name: 'AD', label: '维生素AD' }],
+    supplementOptions: SUPPLEMENT_BASE_OPTIONS,
 
     // 喂奶弹窗
     showFeeding: false,
@@ -194,7 +207,7 @@ Page({
       viewDateText: '今日记录',
       isToday: true,
       customFeeds: [],
-      supplementOptions: [{ name: 'AD', label: '维生素AD' }],
+      supplementOptions: SUPPLEMENT_BASE_OPTIONS,
     })
   },
 
@@ -326,8 +339,11 @@ Page({
       const customFeeds = data.list || []
       this.setData({
         customFeeds,
-        supplementOptions: [{ name: 'AD', label: '维生素AD' }].concat(
-          customFeeds.map((c) => ({ name: c.name, label: c.name }))
+        // AD / D3 已经在基础选项里，自定义列表里同类的（历史数据）不再重复出现
+        supplementOptions: SUPPLEMENT_BASE_OPTIONS.concat(
+          customFeeds
+            .filter((c) => !isVitaminDName(c.name))
+            .map((c) => ({ name: c.name, label: c.name }))
         ),
       })
     } catch (err) {
@@ -997,8 +1013,9 @@ Page({
     this.setData({ submitting: true })
     try {
       // 新名称（不在现有选项里）顺手存为自定义喂养项，之后每天没喂会提醒
+      // AD / D3 属于同一类，已有合并提醒，不必再存成自定义项
       const knownNames = this.data.supplementOptions.map((o) => o.name)
-      if (!isEdit && !knownNames.includes(name) && name !== '维生素AD') {
+      if (!isEdit && !knownNames.includes(name) && !isVitaminDName(name)) {
         try {
           await recordService.addCustomFeed(name)
           await this.loadCustomFeeds()
@@ -1019,7 +1036,7 @@ Page({
         await recordService.addSupplement(payload)
       }
       this.setData({ showSupplement: false, editingId: null, editingKind: '' })
-      wx.showToast({ title: isEdit ? '已保存修改' : `已记录${name === 'AD' ? '维生素AD' : name}`, icon: 'none' })
+      wx.showToast({ title: isEdit ? '已保存修改' : `已记录${SUPPLEMENT_LABEL[name] || name}`, icon: 'none' })
       await this.loadRecords()
     } catch (err) {
       wx.showToast({ title: err.message || '记录失败', icon: 'none' })

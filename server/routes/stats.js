@@ -35,6 +35,7 @@ const {
 
 const { resolveBaby } = require('../utils/baby')
 const { sleepOverlapWhere, sleepSegmentsOfDay, clipSleep } = require('../utils/sleep')
+const { isVitaminDName } = require('../utils/supplement')
 const { computeScore } = require('../utils/score')
 
 /**
@@ -267,7 +268,9 @@ router.get('/daily', auth, async (req, res, next) => {
     const waterTotal = waters.reduce((sum, w) => sum + (w.amount || 0), 0)
     const lastWater = waters[0] || null
     const supplementNames = supplements.map((s) => s.name)
+    // AD 和 D3 属于同一类，吃一种就算喂过了
     const hasAd = supplementNames.includes('AD')
+    const hasVitaminD = supplementNames.some((n) => isVitaminDName(n))
 
     // ========== 今日醒目提醒 ==========
     // 仅当天才有提醒；历史日期是回看，不需要提醒
@@ -285,15 +288,15 @@ router.get('/daily', auth, async (req, res, next) => {
         })
       }
 
-      // 2. 今天维生素AD还没喂
-      if (!hasAd) {
+      // 2. 今天维生素 AD / D3 都还没喂（吃一种就够，合并成一条提醒）
+      if (!hasVitaminD) {
         reminders.push({
           type: 'ad',
           level: 'urgent',
           icon: '💊',
-          text: '今天的维生素AD还没喂',
+          text: '今天的维生素AD / D3 还没喂，吃一种就可以',
           action: 'supplement',
-          actionText: '去喂AD',
+          actionText: '去喂AD/D3',
         })
       }
 
@@ -304,6 +307,8 @@ router.get('/daily', auth, async (req, res, next) => {
         raw: true,
       })
       customFeeds.forEach((c) => {
+        // AD / D3 已经在上面合并提醒过，不再单独提醒
+        if (isVitaminDName(c.name)) return
         if (!supplementNames.includes(c.name)) {
           reminders.push({
             type: 'custom',
@@ -392,6 +397,8 @@ router.get('/daily', auth, async (req, res, next) => {
         count: supplements.length,
         names: supplementNames,
         hasAd,
+        // AD / D3 吃一种就算补过维生素 D
+        hasVitaminD,
         lastText: supplements.length > 0 ? formatTime(supplements[0].time) : '',
       },
       // 今日醒目提醒（喂水 / AD / 自定义喂养项），历史日期为空数组

@@ -50,6 +50,7 @@ const {
 
 const { resolveBaby, buildRecorderMap, isBabyOwner, findOwnBaby } = require('../utils/baby')
 const { sleepOverlapWhere, sleepSegmentsOfDay } = require('../utils/sleep')
+const { normalizeSupplementName } = require('../utils/supplement')
 
 // ============ 展示文案 ============
 const DIAPER_LABEL = { pee: '小便', poo: '大便', both: '大小便' }
@@ -613,15 +614,7 @@ router.post('/water', auth, async (req, res, next) => {
 
 // ============ 喂养品记录（AD / D3 / 自定义） ============
 
-/** 名称归一化：前后空格 + 最长 30 字；「维生素AD」统一成 AD */
-function normalizeSupplementName(raw) {
-  let name = String(raw || '').trim().slice(0, 30)
-  if (!name) return ''
-  if (name === '维生素AD' || name === '维生素AD滴剂' || name.toLowerCase() === 'ad') {
-    name = 'AD'
-  }
-  return name
-}
+// 名称归一化走 utils/supplement.js（AD 和 D3 吃一种就够，提醒里合并成一条）
 
 /**
  * 记一次喂养品
