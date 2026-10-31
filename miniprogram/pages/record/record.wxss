@@ -757,3 +757,11 @@
 .guest-login-btn::after {
   border: none;
 }
+
+/* 跨夜睡眠标注 */
+.record-tag {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #ff9a5c;
+}

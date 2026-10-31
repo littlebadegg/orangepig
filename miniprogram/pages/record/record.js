@@ -119,6 +119,8 @@ Page({
     showSleepEdit: false,
     sleepStart: '',
     sleepEnd: '',
+    // 入睡日期：跨夜记录编辑时不能默认成「今天」
+    sleepBaseDate: '',
 
     amountPresets: AMOUNT_PRESETS,
     durationPresets: DURATION_PRESETS,
@@ -258,7 +260,8 @@ Page({
 
       const list = (timeline.list || []).map((item) => ({
         ...item,
-        key: `${item.kind}_${item.id}`,
+        // 跨夜睡眠在两天各有一条，用 part 区分 key
+        key: `${item.kind}_${item.id}_${item.part || ''}`,
       }))
 
       const parts = date.split('-')
@@ -1118,13 +1121,18 @@ Page({
     const hm = item.timeText || currentHM()
 
     if (kind === 'sleep') {
+      // 跨夜睡眠拆成两条展示，但改的是同一条记录，所以用完整起止时间
       const parts = String(item.subtitle || '').split('→')
+      const startHM = item.startHM || (parts[0] || hm).trim()
+      const endHM = item.endHM || (parts[1] || hm).trim().replace('24:00', '00:00')
       this.setData({
         showSleepEdit: true,
         editingId: id,
         editingKind: kind,
-        sleepStart: (parts[0] || hm).trim(),
-        sleepEnd: (parts[1] || hm).trim(),
+        sleepStart: startHM,
+        sleepEnd: endHM,
+        // 这条睡眠的入睡日期（跨夜时结束日期会自动落到次日）
+        sleepBaseDate: (item.startAt || '').slice(0, 10) || this.data.viewDate || todayString(),
       })
       return
     }
@@ -1232,7 +1240,7 @@ Page({
   // ============ 睡眠编辑 ============
 
   closeSleepEdit() {
-    this.setData({ showSleepEdit: false, editingId: null, editingKind: '' })
+    this.setData({ showSleepEdit: false, editingId: null, editingKind: '', sleepBaseDate: '' })
   },
 
   onSleepStartChange(e) {
@@ -1251,13 +1259,14 @@ Page({
       return
     }
 
-    const today = todayString()
-    const start = `${today} ${sleepStart}:00`
-    let end = `${today} ${sleepEnd}:00`
+    // 以这条睡眠的入睡日期为基准（跨夜记录不能默认按今天算）
+    const base = this.data.sleepBaseDate || this.data.viewDate || todayString()
+    const start = `${base} ${sleepStart}:00`
+    let end = `${base} ${sleepEnd}:00`
 
-    // 结束时间不晚于开始时间 → 视为跨天，落到第二天
+    // 结束时间不晚于开始时间 → 视为跨夜，落到第二天
     if (sleepEnd <= sleepStart) {
-      const d = new Date(`${today} 00:00:00`.replace(/-/g, '/'))
+      const d = new Date(`${base} 00:00:00`.replace(/-/g, '/'))
       d.setDate(d.getDate() + 1)
       const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
         d.getDate()
@@ -1268,7 +1277,7 @@ Page({
     this.setData({ submitting: true })
     try {
       await recordService.update('sleep', editingId, { startTime: start, endTime: end })
-      this.setData({ showSleepEdit: false, editingId: null, editingKind: '' })
+      this.setData({ showSleepEdit: false, editingId: null, editingKind: '', sleepBaseDate: '' })
       wx.showToast({ title: '已保存修改', icon: 'none' })
       await this.loadRecords()
     } catch (err) {

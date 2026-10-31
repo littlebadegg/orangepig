@@ -34,6 +34,7 @@ const {
 } = require('../utils/time')
 
 const { resolveBaby } = require('../utils/baby')
+const { sleepOverlapWhere, sleepSegmentsOfDay, clipSleep } = require('../utils/sleep')
 const { computeScore } = require('../utils/score')
 
 /**
@@ -107,13 +108,9 @@ router.get('/daily', auth, async (req, res, next) => {
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         raw: true,
       }),
+      // 跨天的睡眠拆到各天统计，所以按「与区间有交集」查
       SleepRecord.findAll({
-        where: {
-          babyId: baby.id,
-          startTime: { [Op.between]: [from, to] },
-          recordStatus: 1,
-          status: 1,
-        },
+        where: sleepOverlapWhere(baby.id, from, to),
         raw: true,
       }),
       ExerciseRecord.findAll({
@@ -223,13 +220,15 @@ router.get('/daily', auth, async (req, res, next) => {
       }
     }
 
-    // 睡眠（含进行中的那一段）
-    const sleepMinutes = sleeps.reduce((sum, s) => sum + (s.duration || 0), 0)
+    // 睡眠（跨夜只算当天那段；进行中的那段同样按天裁剪）
+    const sleepSegs = sleepSegmentsOfDay(sleeps, from, to)
+    const sleepMinutes = sleepSegs.reduce((sum, s) => sum + s.minutes, 0)
     const ongoing = await SleepRecord.findOne({
       where: { babyId: baby.id, recordStatus: 0, status: 1 },
       raw: true,
     })
-    const ongoingMinutes = ongoing ? diffMinutes(ongoing.startTime, new Date()) : 0
+    const ongoingSeg = ongoing ? clipSleep(ongoing.startTime, null, from, to) : null
+    const ongoingMinutes = ongoingSeg ? ongoingSeg.minutes : 0
 
     // 排气操
     const exerciseMinutes = exercises.reduce((sum, e) => sum + (e.duration || 0), 0)
@@ -337,7 +336,7 @@ router.get('/daily', auth, async (req, res, next) => {
         lastDiaper,
       },
       sleep: {
-        count: sleeps.length,
+        count: sleepSegs.length,
         minutes: sleepMinutes,
         minutesText: formatDuration(sleepMinutes),
         ongoingMinutes,
@@ -401,7 +400,7 @@ router.get('/daily', auth, async (req, res, next) => {
       score: computeScore({
         feedings,
         diapers,
-        sleeps,
+        sleeps: sleepSegs,
         exercises,
         temperatures,
         spitUps,
@@ -438,13 +437,9 @@ router.get('/trend', auth, async (req, res, next) => {
         where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
         raw: true,
       }),
+      // 跨天的睡眠拆到各天统计，所以按「与区间有交集」查
       SleepRecord.findAll({
-        where: {
-          babyId: baby.id,
-          startTime: { [Op.between]: [from, to] },
-          recordStatus: 1,
-          status: 1,
-        },
+        where: sleepOverlapWhere(baby.id, from, to),
         raw: true,
       }),
     ])
@@ -475,9 +470,15 @@ router.get('/trend', auth, async (req, res, next) => {
       if (byDate[key]) byDate[key].diaperCount++
     })
 
-    sleeps.forEach((s) => {
-      const key = formatDate(s.startTime)
-      if (byDate[key]) byDate[key].sleepMinutes += s.duration || 0
+    // 睡眠：跨天的要拆到各天，不能整夜都算给入睡那天
+    Object.keys(byDate).forEach((key) => {
+      const [y, m, d] = key.split('-').map(Number)
+      const dayFrom = new Date(y, m - 1, d, 0, 0, 0, 0)
+      const dayTo = endOfDay(dayFrom)
+      byDate[key].sleepMinutes = sleeps.reduce((sum, s) => {
+        const seg = clipSleep(s.startTime, s.endTime, dayFrom, dayTo)
+        return sum + (seg ? seg.minutes : 0)
+      }, 0)
     })
 
     const list = Object.keys(byDate)

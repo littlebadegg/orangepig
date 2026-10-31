@@ -49,6 +49,7 @@ const {
 } = require('../utils/time')
 
 const { resolveBaby, buildRecorderMap, isBabyOwner, findOwnBaby } = require('../utils/baby')
+const { sleepOverlapWhere, sleepSegmentsOfDay } = require('../utils/sleep')
 
 // ============ 展示文案 ============
 const DIAPER_LABEL = { pee: '小便', poo: '大便', both: '大小便' }
@@ -768,13 +769,9 @@ router.get('/timeline', auth, async (req, res, next) => {
           where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
           raw: true,
         }),
+        // 跨天的睡眠两天都要能查到（再按天切分成两段展示）
         SleepRecord.findAll({
-          where: {
-            babyId: baby.id,
-            startTime: { [Op.between]: [from, to] },
-            recordStatus: 1,
-            status: 1,
-          },
+          where: sleepOverlapWhere(baby.id, from, to),
           raw: true,
         }),
         ExerciseRecord.findAll({
@@ -850,19 +847,43 @@ router.get('/timeline', auth, async (req, res, next) => {
       })
     })
 
-    sleeps.forEach((r) => {
-      const t = new Date(r.startTime).getTime()
+    // 睡眠：跨夜的拆成两段，昨天那段算昨天、今天那段算今天
+    sleepSegmentsOfDay(sleeps, from, to).forEach((seg) => {
+      const r = seg.row
+      const t = seg.start.getTime()
+      const whole = r.duration || diffMinutes(r.startTime, r.endTime)
+      // 跨夜的另一半：carryIn 说明是昨夜入睡的，carryOut 说明睡到明天才起
+      const otherTime = seg.carryIn ? formatTime(r.startTime) : formatTime(r.endTime)
+      const tagText = seg.carryIn
+        ? `昨夜 ${otherTime} 入睡 · 整夜 ${formatDuration(whole)}`
+        : seg.carryOut
+          ? `次日 ${otherTime} 起床 · 整夜 ${formatDuration(whole)}`
+          : ''
+      const segEndText = seg.carryOut ? '24:00' : formatTime(seg.end)
+
       list.push({
         id: r.id,
         kind: 'sleep',
         icon: '😴',
-        title: `睡了 ${formatDuration(r.duration)}`,
-        subtitle: `${formatTime(r.startTime)} → ${formatTime(r.endTime)}`,
-        duration: r.duration,
-        durationText: formatDuration(r.duration),
+        // 同一段睡眠在两天的记录里各占一条，用 part 区分，避免列表 key 冲突
+        part: seg.carryIn ? 'in' : seg.carryOut ? 'out' : 'whole',
+        title: `睡了 ${formatDuration(seg.minutes)}`,
+        subtitle: `${formatTime(seg.start)} → ${segEndText}`,
+        tagText,
+        crossNight: seg.carryIn || seg.carryOut,
+        // 当天这段的时长（统计用这个，不是整夜时长）
+        duration: seg.minutes,
+        durationText: formatDuration(seg.minutes),
+        wholeDuration: whole,
+        wholeDurationText: formatDuration(whole),
+        // 编辑时改的是整条睡眠记录，所以要带上完整起止
+        startHM: formatTime(r.startTime),
+        endHM: formatTime(r.endTime),
+        startAt: formatDateTime(r.startTime),
+        endAt: formatDateTime(r.endTime),
         note: r.note || '',
         recorder: recorder(r),
-        timeText: formatTime(r.startTime),
+        timeText: formatTime(seg.start),
         timeFull: formatDateTime(r.startTime),
         sortKey: t,
       })

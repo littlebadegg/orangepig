@@ -190,6 +190,7 @@
       <view class="col record-main">
         <text class="record-title">{{item.title}}</text>
         <text class="record-sub" wx:if="{{item.kind === 'sleep'}}">{{item.subtitle}}</text>
+        <text class="record-tag" wx:if="{{item.tagText}}">{{item.tagText}}</text>
         <text class="record-sub" wx:if="{{item.note}}">{{item.note}}</text>
         <text class="record-by" wx:if="{{item.recorder}}">{{item.recorder}}记的</text>
       </view>
