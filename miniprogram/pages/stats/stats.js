@@ -3,7 +3,7 @@
  */
 const babyService = require('../../services/baby')
 const recordService = require('../../services/record')
-const { todayString, genderText, normalizeStats } = require('../../utils/format')
+const { todayString, genderText, normalizeStats, ageText } = require('../../utils/format')
 
 Page({
   data: {
@@ -45,7 +45,9 @@ Page({
       this.setData({
         currentBabyId,
         currentBaby,
-        babySubtitle: currentBaby ? genderText(currentBaby.gender) : '',
+        babySubtitle: currentBaby
+          ? [genderText(currentBaby.gender), ageText(currentBaby.birthday)].filter(Boolean).join(' · ')
+          : '',
       })
 
       if (!currentBabyId) {

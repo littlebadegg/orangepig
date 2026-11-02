@@ -3,7 +3,7 @@
  */
 const babyService = require('../../services/baby')
 const recordService = require('../../services/record')
-const { nowString, todayString, formatDuration, genderText, normalizeStats } = require('../../utils/format')
+const { nowString, todayString, formatDuration, genderText, normalizeStats, ageText } = require('../../utils/format')
 const { recordDemo } = require('../../utils/demo-data')
 
 // 快捷选项
@@ -239,9 +239,15 @@ Page({
         babyData.currentBabyId || (babies.length > 0 ? babies[0].id : null)
       const currentBaby = babies.find((b) => b.id === currentBabyId) || null
 
-      const babySubtitle = currentBaby
-        ? `${genderText(currentBaby.gender)}${currentBaby.birthday ? ' · ' + currentBaby.birthday : ''}`
-        : '去「我的」添加一个宝宝'
+      // 首页宝宝栏副标题：性别 · 生日 · 现在多大
+      let babySubtitle = '去「我的」添加一个宝宝'
+      if (currentBaby) {
+        const age = ageText(currentBaby.birthday)
+        babySubtitle =
+          genderText(currentBaby.gender) +
+          (currentBaby.birthday ? ` · ${currentBaby.birthday}` : '') +
+          (age ? ` · ${age}` : '')
+      }
 
       this.setData({ babies, currentBabyId, currentBaby, babySubtitle })
 

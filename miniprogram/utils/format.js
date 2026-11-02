@@ -94,6 +94,31 @@ function genderText(gender) {
   return '宝宝'
 }
 
+/**
+ * 宝宝年龄文案（按公历整月算）
+ * 20 天 → 「20天」；7个月 → 「7个月」；26个月 → 「2岁2个月」；24个月 → 「2岁」
+ * 出生当天显示「0天」，未出生返回 ''
+ */
+function ageText(birthday) {
+  if (!birthday) return ''
+  const birth = new Date(String(birthday).replace(/-/g, '/'))
+  if (isNaN(birth.getTime())) return ''
+  const now = new Date()
+  const days = Math.floor((now - birth) / 86400000)
+  if (days < 0) return ''
+  if (days < 31) return `${days}天`
+
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth())
+  // 本月的「生日对应日」还没到，说明整月没满
+  if (now.getDate() < birth.getDate()) months -= 1
+  if (months < 1) return `${days}天`
+
+  const years = Math.floor(months / 12)
+  const rem = months % 12
+  if (years >= 1) return rem > 0 ? `${years}岁${rem}个月` : `${years}岁`
+  return `${months}个月`
+}
+
 module.exports = {
   pad,
   formatDuration,
@@ -103,4 +128,5 @@ module.exports = {
   composeDateTime,
   normalizeStats,
   genderText,
+  ageText,
 }

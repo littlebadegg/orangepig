@@ -48,7 +48,7 @@ const {
   safeDate,
 } = require('../utils/time')
 
-const { resolveBaby, buildRecorderMap, isBabyOwner, findOwnBaby } = require('../utils/baby')
+const { resolveBaby, buildRecorderMap, findOwnBaby } = require('../utils/baby')
 const { sleepOverlapWhere, sleepSegmentsOfDay } = require('../utils/sleep')
 const { normalizeSupplementName } = require('../utils/supplement')
 
@@ -1079,16 +1079,11 @@ router.put('/:type/:id', auth, async (req, res, next) => {
       return res.apiError('记录不存在', 404, 404)
     }
 
-    // 权限与删除一致：创建者能改整只宝宝，家人只能改自己记的
+    // 权限：共享宝宝的所有成员（创建者+家人）都能修改任何记录——
+    // 家人互相补错是常态（比如爸爸把毫升记错了，妈妈顺手改掉）
     const baby = await findOwnBaby(record.babyId, req.userId)
     if (!baby) {
       return res.apiError('记录不存在', 404, 404)
-    }
-    const owner = await isBabyOwner(record.babyId, req.userId)
-    // 睡眠是宝宝的状态（谁都能帮着按起床），所以允许家人修改；
-    // 其余记录仍只允许本人（或宝宝创建者）修改
-    if (record.userId !== req.userId && !owner && type !== 'sleep') {
-      return res.apiError('家人只能修改自己记录的内容', 403, 403)
     }
 
     const body = req.body || {}
@@ -1309,12 +1304,7 @@ router.delete('/:type/:id', auth, async (req, res, next) => {
       return res.apiError('记录不存在', 404, 404)
     }
 
-    // 创建者能删宝宝的全部记录；被邀请的家人只能删自己记的那条
-    // 睡眠例外：任何家人都能删（谁按的起床谁负责收拾）
-    const owner = await isBabyOwner(record.babyId, req.userId)
-    if (record.userId !== req.userId && !owner && type !== 'sleep') {
-      return res.apiError('家人只能删除自己记录的内容', 403, 403)
-    }
+    // 权限：共享宝宝的所有成员都能删除任何记录（与修改一致，家人互删错记的常态）
 
     await record.update({ status: 0 })
     res.apiSuccess({ id: record.id })
