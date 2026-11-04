@@ -740,6 +740,78 @@ const CareTip = sequelize.define('CareTip', {
   ],
 })
 
+// ============ 操作日志（后台宝宝画像用） ============
+// 记录谁在什么时候做了什么：登录、查看某天记录、新增/修改/删除记录、邀请家人等
+const ActivityLog = sequelize.define('ActivityLog', {
+  id: {
+    type: DataTypes.BIGINT.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    field: 'user_id',
+    comment: '操作人',
+  },
+  babyId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    field: 'baby_id',
+    comment: '相关宝宝（登录等全局动作可为空）',
+  },
+  action: {
+    type: DataTypes.STRING(32),
+    allowNull: false,
+    comment: 'login / view_timeline / record_create / record_update / record_delete / baby_create / baby_switch / member_join / member_remove / relation_update',
+  },
+  targetType: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    field: 'target_type',
+    comment: '记录类型：feeding / diaper / sleep …',
+  },
+  targetId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    field: 'target_id',
+  },
+  viewDate: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    field: 'view_date',
+    comment: '查看的记录日期（view_timeline 用）',
+  },
+  detail: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    comment: '可读摘要，如「配方奶 180ml」',
+  },
+  ip: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+  },
+  ua: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    comment: 'User-Agent（判断手机/工具）',
+  },
+  // 全局 define 把 createdAt 映射成 create_time，这里显式用 created_at 更直观
+  createdAt: {
+    type: DataTypes.DATE,
+    field: 'created_at',
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'activity_logs',
+  timestamps: false,
+  indexes: [
+    { fields: ['baby_id', 'created_at'] },
+    { fields: ['user_id', 'created_at'] },
+    { fields: ['action'] },
+  ],
+})
+
 // ============ 模型关联 ============
 
 // 用户 → 宝宝（一对多）
@@ -798,6 +870,12 @@ User.hasMany(BathRecord, { foreignKey: 'userId', as: 'baths' })
 User.hasMany(WaterRecord, { foreignKey: 'userId', as: 'waters' })
 User.hasMany(SupplementRecord, { foreignKey: 'userId', as: 'supplements' })
 
+// 操作日志（不加外键约束：宝宝/用户删了日志也要留着，baby_id 记原值便于追溯）
+User.hasMany(ActivityLog, { foreignKey: 'userId', as: 'activities', constraints: false })
+ActivityLog.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false })
+Baby.hasMany(ActivityLog, { foreignKey: 'babyId', as: 'activities', constraints: false })
+ActivityLog.belongsTo(Baby, { foreignKey: 'babyId', as: 'baby', constraints: false })
+
 module.exports = {
   sequelize,
   Sequelize,
@@ -816,4 +894,5 @@ module.exports = {
   SupplementRecord,
   CustomFeed,
   CareTip,
+  ActivityLog,
 }

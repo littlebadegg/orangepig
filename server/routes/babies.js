@@ -25,6 +25,7 @@ const {
   accessibleBabyIds,
   getMemberRole,
 } = require('../utils/baby')
+const { ACTION, logActivity } = require('../utils/activity')
 
 /** 邀请码字符集（去掉 0/O/1/I 这种容易看错的） */
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -47,6 +48,62 @@ async function generateInviteCode() {
 async function countMembers(babyId) {
   return BabyMember.count({ where: { babyId, status: 1 } })
 }
+
+// ============ 操作埋点（后台宝宝画像用） ============
+router.use((req, res, next) => {
+  if (req.method === 'GET') return next()
+
+  // 创建/加入宝宝时 id 只在响应体里，先把响应捞下来
+  const originalJson = res.json.bind(res)
+  let payload = null
+  res.json = (body) => {
+    payload = body
+    return originalJson(body)
+  }
+
+  res.on('finish', () => {
+    if (res.statusCode >= 400) return
+
+    const seg = String(req.path || '')
+      .replace(/^\/+/, '')
+      .split('/')
+    const body = req.body || {}
+    const idInPath = /^\d+$/.test(seg[0] || '') ? Number(seg[0]) : null
+    const sub = seg[1] || ''
+
+    let action = null
+    let detail = ''
+    let babyId = idInPath
+
+    if (req.method === 'POST' && !seg[0]) {
+      action = ACTION.BABY_CREATE
+      detail = String(body.name || '').slice(0, 20)
+    } else if (req.method === 'POST' && seg[0] === 'join') {
+      action = ACTION.MEMBER_JOIN
+      detail = body.relation ? `称呼：${body.relation}` : ''
+    } else if (req.method === 'POST' && sub === 'select') {
+      action = ACTION.BABY_SWITCH
+    } else if (req.method === 'PUT' && sub === 'my-relation') {
+      action = ACTION.RELATION_UPDATE
+      detail = String(body.relation || '').slice(0, 20)
+    } else if (req.method === 'PUT' && !sub) {
+      action = ACTION.BABY_UPDATE
+    } else if (req.method === 'DELETE' && sub === 'members') {
+      action = ACTION.MEMBER_REMOVE
+    } else if (req.method === 'DELETE' && !sub) {
+      action = ACTION.BABY_DELETE
+    }
+
+    if (!action) return
+    // 创建/加入：从响应体里拿宝宝 id
+    if (!babyId && payload && payload.data && payload.data.id) {
+      babyId = Number(payload.data.id) || null
+    }
+    logActivity({ req, userId: req.userId, babyId, action, detail })
+  })
+
+  next()
+})
 
 /**
  * 宝宝列表：自己创建的 + 被邀请加入的

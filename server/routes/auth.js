@@ -12,6 +12,7 @@ const router = express.Router()
 const config = require('../config')
 const { auth } = require('../middleware/auth')
 const { code2session, msgSecCheck } = require('../utils/wechat')
+const { ACTION, logActivity } = require('../utils/activity')
 const { User } = require('../models')
 
 /**
@@ -47,6 +48,15 @@ router.post('/login', async (req, res, next) => {
       config.jwtSecret,
       { expiresIn: config.jwtExpiresIn }
     )
+
+    // 登录埋点（后台宝宝画像看家长活跃度）
+    logActivity({
+      req,
+      userId: user.id,
+      babyId: user.currentBabyId || null,
+      action: ACTION.LOGIN,
+      detail: isNewUser ? '新用户首次登录' : '',
+    })
 
     res.apiSuccess({
       token,

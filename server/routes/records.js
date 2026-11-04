@@ -51,6 +51,7 @@ const {
 const { resolveBaby, buildRecorderMap, findOwnBaby } = require('../utils/baby')
 const { sleepOverlapWhere, sleepSegmentsOfDay } = require('../utils/sleep')
 const { normalizeSupplementName } = require('../utils/supplement')
+const { ACTION, logActivity, summarizeRecord, KIND_LABEL } = require('../utils/activity')
 
 // ============ 展示文案 ============
 const DIAPER_LABEL = { pee: '小便', poo: '大便', both: '大小便' }
@@ -84,6 +85,57 @@ function toNum(value) {
   const n = parseFloat(value)
   return isNaN(n) ? null : n
 }
+
+// ============ 操作埋点（后台宝宝画像用） ============
+// 所有写操作统一记日志：挂在响应完成事件上，写日志失败不影响业务
+router.use((req, res, next) => {
+  if (req.method !== 'POST' && req.method !== 'PUT' && req.method !== 'DELETE') return next()
+
+  res.on('finish', () => {
+    if (res.statusCode >= 400) return
+
+    const seg = String(req.path || '')
+      .replace(/^\/+/, '')
+      .split('/')
+    const kind = seg[0]
+    if (!kind || !KIND_LABEL[kind]) return
+
+    const body = req.body || {}
+    const action =
+      req.method === 'POST'
+        ? ACTION.RECORD_CREATE
+        : req.method === 'PUT'
+        ? ACTION.RECORD_UPDATE
+        : ACTION.RECORD_DELETE
+
+    // PUT/DELETE 的路径是 /:type/:id，POST 的多为 /:type
+    const targetId = /^\d+$/.test(seg[1] || '') ? Number(seg[1]) : null
+
+    // 异步补 babyId（body 没带就用用户当前宝宝），不阻塞响应
+    ;(async () => {
+      let babyId = Number(body.babyId) || null
+      if (!babyId) {
+        try {
+          const baby = await resolveBaby(req)
+          babyId = baby ? baby.id : null
+        } catch (e) {
+          babyId = null
+        }
+      }
+      logActivity({
+        req,
+        userId: req.userId,
+        babyId,
+        action,
+        targetType: kind,
+        targetId,
+        detail: summarizeRecord(kind, body),
+      })
+    })()
+  })
+
+  next()
+})
 
 // ============ 喂养记录 ============
 
@@ -751,6 +803,16 @@ router.get('/timeline', auth, async (req, res, next) => {
     const day = safeDate(req.query.date)
     const from = startOfDay(day)
     const to = endOfDay(day)
+
+    // 记一条「查看」：30 分钟内同一人同一宝宝同一天只记一次，避免刷屏
+    logActivity({
+      req,
+      userId: req.userId,
+      babyId: baby.id,
+      action: ACTION.VIEW_TIMELINE,
+      viewDate: formatDate(day),
+      dedupe: true,
+    })
 
     const [feedings, diapers, sleeps, exercises, growths, temperatures, spitUps, baths, waters, supplements, recorderMap] =
       await Promise.all([

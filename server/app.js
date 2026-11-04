@@ -14,6 +14,9 @@ const { errorHandler, notFound } = require('./middleware/error')
 // 创建 Express 应用
 const app = express()
 
+// 部署在 Nginx 后面：取真实 IP（操作日志记录来源）
+app.set('trust proxy', 1)
+
 // 安全中间件
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -46,6 +49,18 @@ app.use('/api/babies', require('./routes/babies'))
 app.use('/api/records', require('./routes/records'))
 app.use('/api/stats', require('./routes/stats'))
 app.use('/api/tips', require('./routes/tips'))
+app.use('/api/admin', require('./routes/admin'))
+
+// 网页后台（宝宝画像）— 静态页面，口令登录后拉接口
+// 允许页内联样式/脚本（helmet 默认 CSP 会拦掉），其余仍限制在同源
+app.use('/admin', (req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'"
+  )
+  next()
+})
+app.use('/admin', express.static(require('path').join(__dirname, 'public/admin')))
 
 // 健康检查
 app.get('/api/health', (req, res) => {

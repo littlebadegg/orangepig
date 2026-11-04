@@ -20,6 +20,9 @@ module.exports = {
   },
   jwtSecret: process.env.JWT_SECRET || 'default-secret-change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // 网页后台口令（不配置则后台不可用，避免误开）
+  adminPassword: process.env.ADMIN_PASSWORD || '',
+  adminTokenExpiresIn: process.env.ADMIN_TOKEN_EXPIRES_IN || '12h',
   wx: {
     appid: process.env.WX_APPID || '',
     secret: process.env.WX_SECRET || '',

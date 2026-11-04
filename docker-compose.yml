@@ -23,6 +23,9 @@ services:
       # 首次启动是否插入演示数据（宝宝「小橙子」+ 今日示例记录）
       # 正式使用建议设成 false
       - SEED_DEMO=${SEED_DEMO:-true}
+      # 网页后台口令（/admin），留空则后台不可用
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_TOKEN_EXPIRES_IN=${ADMIN_TOKEN_EXPIRES_IN:-12h}
     volumes:
       - ./server/uploads:/app/uploads
     networks:
