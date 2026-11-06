@@ -25,9 +25,9 @@
       <text class="stat-icon">🍼</text>
       <view class="col stat-main">
         <text class="stat-label">喂养</text>
-        <text class="stat-sub">奶粉 {{stats.feeding.formulaCount}} 次 · 母乳 {{stats.feeding.breastCount}} 次</text>
+        <text class="stat-sub">奶粉 {{stats.feeding.formulaCount}} 次 · 母乳 {{stats.feeding.breastCount}} 次{{stats.feeding.breastMinutesText ? ' · 共' + stats.feeding.breastMinutesText : ''}}</text>
       </view>
-      <text class="stat-value">{{stats.feeding.totalAmount}} ml</text>
+      <text class="stat-value">{{stats.feeding.totalAmount > 0 ? stats.feeding.totalAmount + 'ml' : (stats.feeding.breastMinutesText || '—')}}</text>
     </view>
 
     <view class="divider"></view>
@@ -109,6 +109,18 @@
     </view>
   </view>
 
+  <!-- ===== 与前一天对比 ===== -->
+  <view class="card" wx:if="{{stats && stats.compare && stats.compare.items.length > 0}}">
+    <view class="card-title">与前一天对比</view>
+    <view class="cmp-row" wx:for="{{stats.compare.items}}" wx:key="key">
+      <text class="cmp-icon">{{item.icon}}</text>
+      <text class="cmp-label">{{item.label}}</text>
+      <text class="cmp-value">{{item.value}}</text>
+      <text class="cmp-delta cmp-{{item.dir}}">{{item.dir === 'flat' ? '持平' : (item.dir === 'up' ? '↑' : '↓') + item.text}}</text>
+    </view>
+    <view class="avg-tip">对比的是 {{stats.compare.prevDate}} 的数据</view>
+  </view>
+
   <!-- ===== 身高体重 ===== -->
   <view class="card" wx:if="{{stats && stats.growth.hasData}}">
     <view class="card-title">最近一次测量</view>
@@ -145,12 +157,14 @@
       <text class="d-item">喂养</text>
       <text class="d-item">尿片</text>
       <text class="d-item">睡眠</text>
+      <text class="d-item">母乳</text>
     </view>
     <view class="detail-row" wx:for="{{trend}}" wx:key="date">
       <text class="d-date">{{item.label}}</text>
       <text class="d-item">{{item.feedingCount}} 次</text>
       <text class="d-item">{{item.diaperCount}} 次</text>
       <text class="d-item">{{item.sleepText || '—'}}</text>
+      <text class="d-item">{{item.breastText || '—'}}</text>
     </view>
   </view>
 

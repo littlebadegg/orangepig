@@ -96,7 +96,7 @@
           <text class="text-num">{{stats.feeding.count}}</text>
           <text class="text-unit">次</text>
         </view>
-        <text class="ov-label">🍼 共 {{stats.feeding.totalAmount}}ml</text>
+        <text class="ov-label">🍼 共 {{stats.feeding.totalAmount}}ml{{stats.feeding.breastMinutesText ? ' · 母乳' + stats.feeding.breastMinutesText : ''}}</text>
       </view>
       <view class="ov-item">
         <view class="row">
@@ -162,6 +162,17 @@
       <text class="growth-item">📏 {{stats.growth.heightText || '—'}}</text>
       <text class="growth-item">⚖️ {{stats.growth.weightText || '—'}}</text>
       <text class="growth-date" wx:if="{{stats.growth.measuredText}}">{{stats.growth.measuredText}}</text>
+    </view>
+
+    <!-- 第四行：与上一天对比 -->
+    <view class="compare-line" wx:if="{{stats && stats.compare && stats.compare.items.length > 0}}">
+      <text class="compare-title">较{{isToday ? '昨日' : '前一天'}}</text>
+      <view class="compare-items">
+        <view class="compare-item" wx:for="{{stats.compare.items}}" wx:key="key">
+          <text class="compare-label">{{item.label}}</text>
+          <text class="compare-delta compare-{{item.dir}}">{{item.dir === 'flat' ? '持平' : (item.dir === 'up' ? '↑' : '↓') + item.text}}</text>
+        </view>
+      </view>
     </view>
   </view>
 

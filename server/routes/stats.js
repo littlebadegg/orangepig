@@ -85,6 +85,57 @@ function isToday(day) {
   return formatDate(day) === formatDate(new Date())
 }
 
+/** 生成「与上一天对比」的差值文案 */
+function deltaOf(cur, prev, unit) {
+  const d = cur - prev
+  if (d === 0) return { dir: 'flat', text: '持平' }
+  if (d > 0) return { dir: 'up', text: `+${d}${unit}` }
+  return { dir: 'down', text: `${d}${unit}` }
+}
+
+/** 时长版差值文案（分钟 → +30分钟 / -1小时15分） */
+function deltaOfDuration(cur, prev) {
+  const d = cur - prev
+  if (d === 0) return { dir: 'flat', text: '持平' }
+  if (d > 0) return { dir: 'up', text: `+${formatDuration(d)}` }
+  return { dir: 'down', text: `-${formatDuration(-d)}` }
+}
+
+/**
+ * 某天的核心汇总（喂养次数 / 奶粉量 / 母乳时长 / 尿片 / 睡眠）
+ * daily 的「与上一天对比」用它查前一天，避免重复写查询
+ */
+async function daySummary(babyId, day) {
+  const from = startOfDay(day)
+  const to = endOfDay(day)
+  const [feedings, diapers, sleeps] = await Promise.all([
+    FeedingRecord.findAll({
+      where: { babyId, time: { [Op.between]: [from, to] }, status: 1 },
+      raw: true,
+    }),
+    DiaperRecord.findAll({
+      where: { babyId, time: { [Op.between]: [from, to] }, status: 1 },
+      raw: true,
+    }),
+    SleepRecord.findAll({
+      where: sleepOverlapWhere(babyId, from, to),
+      raw: true,
+    }),
+  ])
+  const sleepSegs = sleepSegmentsOfDay(sleeps, from, to)
+  return {
+    feedingCount: feedings.length,
+    totalAmount: feedings
+      .filter((f) => f.type === 'formula')
+      .reduce((sum, f) => sum + (f.amount || 0), 0),
+    breastMinutes: feedings
+      .filter((f) => f.type === 'breast')
+      .reduce((sum, f) => sum + (f.duration || 0), 0),
+    diaperCount: diapers.length,
+    sleepMinutes: sleepSegs.reduce((sum, s) => sum + s.minutes, 0),
+  }
+}
+
 /**
  * 某天概览
  */
@@ -323,6 +374,53 @@ router.get('/daily', auth, async (req, res, next) => {
       })
     }
 
+    // ========== 与上一天对比 ==========
+    // 核心维度取同口径：奶粉奶量 / 喂养次数 / 母乳时长 / 尿片 / 睡眠（今天含进行中那段）
+    const prevDay = new Date(day.getTime() - 86400000)
+    const prev = await daySummary(baby.id, prevDay)
+    const compareItems = [
+      {
+        key: 'amount',
+        icon: '🍼',
+        label: '奶粉奶量',
+        value: `${totalAmount}ml`,
+        ...deltaOf(totalAmount, prev.totalAmount, 'ml'),
+      },
+      {
+        key: 'feeding',
+        icon: '🍼',
+        label: '喂养次数',
+        value: `${feedings.length}次`,
+        ...deltaOf(feedings.length, prev.feedingCount, '次'),
+      },
+    ]
+    // 母乳：两天都没喂就不展示这项
+    if (breastMinutes > 0 || prev.breastMinutes > 0) {
+      compareItems.push({
+        key: 'breast',
+        icon: '🤱',
+        label: '母乳时长',
+        value: formatDuration(breastMinutes),
+        ...deltaOfDuration(breastMinutes, prev.breastMinutes),
+      })
+    }
+    compareItems.push(
+      {
+        key: 'diaper',
+        icon: '🧷',
+        label: '换尿片',
+        value: `${diapers.length}次`,
+        ...deltaOf(diapers.length, prev.diaperCount, '次'),
+      },
+      {
+        key: 'sleep',
+        icon: '😴',
+        label: '睡眠',
+        value: formatDuration(sleepMinutes + ongoingMinutes),
+        ...deltaOfDuration(sleepMinutes + ongoingMinutes, prev.sleepMinutes),
+      }
+    )
+
     res.apiSuccess({
       date: formatDate(day),
       feeding: {
@@ -332,6 +430,7 @@ router.get('/daily', auth, async (req, res, next) => {
         totalAmount,
         avgAmount: formulaList.length > 0 ? Math.round(totalAmount / formulaList.length) : 0,
         breastMinutes,
+        breastMinutesText: breastMinutes > 0 ? formatDuration(breastMinutes) : '',
         lastFeeding,
       },
       diaper: {
@@ -403,6 +502,11 @@ router.get('/daily', auth, async (req, res, next) => {
       },
       // 今日醒目提醒（喂水 / AD / 自定义喂养项），历史日期为空数组
       reminders,
+      // 与上一天对比（prevDate 为对比的那天，items 为各维度差值）
+      compare: {
+        prevDate: formatDate(prevDay),
+        items: compareItems,
+      },
       // 每日养育评分（0~100，含各维度得分、加减分明细与建议）
       score: computeScore({
         feedings,
@@ -460,6 +564,7 @@ router.get('/trend', auth, async (req, res, next) => {
         label: i === 0 ? '今天' : `${parseInt(dateStr.slice(5, 7))}/${parseInt(dateStr.slice(8, 10))}`,
         feedingCount: 0,
         totalAmount: 0,
+        breastMinutes: 0,
         diaperCount: 0,
         sleepMinutes: 0,
       }
@@ -470,6 +575,7 @@ router.get('/trend', auth, async (req, res, next) => {
       if (!byDate[key]) return
       byDate[key].feedingCount++
       if (f.type === 'formula') byDate[key].totalAmount += f.amount || 0
+      if (f.type === 'breast') byDate[key].breastMinutes += f.duration || 0
     })
 
     diapers.forEach((d) => {
@@ -493,6 +599,8 @@ router.get('/trend', auth, async (req, res, next) => {
       .map((k) => ({
         ...byDate[k],
         sleepText: formatDuration(byDate[k].sleepMinutes),
+        breastText:
+          byDate[k].breastMinutes > 0 ? formatDuration(byDate[k].breastMinutes) : '',
       }))
 
     res.apiSuccess({ days, list })

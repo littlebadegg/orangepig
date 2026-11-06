@@ -63,6 +63,11 @@ function normalizeStats(stats) {
     supplement: s.supplement || {},
     // 今日醒目提醒（喂水 / AD / 自定义喂养项），旧后端没有就当没有
     reminders: Array.isArray(s.reminders) ? s.reminders : [],
+    // 与上一天对比：旧后端没有返回时置 null，页面靠 wx:if 隐藏
+    compare:
+      s.compare && typeof s.compare === 'object' && Array.isArray(s.compare.items)
+        ? s.compare
+        : null,
     // 评分对象：后端旧版本可能没有 score，这里补一个空壳，避免 WXML 访问 .items 报错
     score:
       s.score && typeof s.score === 'object'

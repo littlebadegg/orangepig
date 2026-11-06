@@ -16,6 +16,7 @@ function recordDemo() {
       feeding: {
         count: 5,
         totalAmount: 590,
+        breastMinutesText: '15分钟',
         lastFeeding: { agoText: '32分钟前', timeText: '14:08', title: '奶粉 130ml' },
       },
       diaper: {
@@ -30,6 +31,16 @@ function recordDemo() {
       bath: { count: 1, minutesText: '10分钟' },
       temperature: { count: 2, latestText: '36.8℃', levelText: '正常' },
       growth: { hasData: true, heightText: '64.5cm', weightText: '7.2kg', measuredText: '10-26' },
+      compare: {
+        prevDate: '2026-11-05',
+        items: [
+          { key: 'amount', icon: '🍼', label: '奶粉奶量', value: '590ml', dir: 'up', text: '+80ml' },
+          { key: 'feeding', icon: '🍼', label: '喂养次数', value: '5次', dir: 'flat', text: '持平' },
+          { key: 'breast', icon: '🤱', label: '母乳时长', value: '15分钟', dir: 'down', text: '-10分钟' },
+          { key: 'diaper', icon: '🧷', label: '换尿片', value: '6次', dir: 'up', text: '+1次' },
+          { key: 'sleep', icon: '😴', label: '睡眠', value: '2小时10分', dir: 'down', text: '-25分钟' },
+        ],
+      },
       score: { total: 88, level: '良好' },
       reminders: [
         {
