@@ -109,6 +109,17 @@
     </view>
   </view>
 
+  <!-- ===== 24 小时时钟 ===== -->
+  <view class="card clock-entry" wx:if="{{stats}}" bindtap="goClock">
+    <view class="row-between">
+      <view class="col">
+        <text class="card-title">24 小时作息时钟</text>
+        <text class="clock-entry-sub">把一天画成时钟，看看时间都去哪儿了</text>
+      </view>
+      <text class="clock-entry-arrow">›</text>
+    </view>
+  </view>
+
   <!-- ===== 与前一天对比 ===== -->
   <view class="card" wx:if="{{stats && stats.compare && stats.compare.items.length > 0}}">
     <view class="card-title">与前一天对比</view>

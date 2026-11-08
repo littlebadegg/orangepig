@@ -526,6 +526,275 @@ router.get('/daily', auth, async (req, res, next) => {
 })
 
 /**
+ * 24 小时时钟盘：颜色与文案统一在这里定义，前端图例直接用
+ * 睡眠绿 / 奶粉蓝 / 母乳浅蓝 / 尿片黄 / 排气操橙 / 洗澡青 / 体温红 / 吐奶紫 / 喂水薄荷 / 喂养品粉
+ */
+const CLOCK_META = {
+  sleep: { label: '睡觉', icon: '😴', color: '#7BC47F' },
+  formula: { label: '奶粉', icon: '🍼', color: '#4A90E2' },
+  breast: { label: '母乳', icon: '🤱', color: '#8ECAE6' },
+  diaper: { label: '换尿片', icon: '🧷', color: '#F2C14E' },
+  exercise: { label: '排气操', icon: '🤸', color: '#FF9F43' },
+  bath: { label: '洗澡', icon: '🛁', color: '#4ECDC4' },
+  temperature: { label: '体温', icon: '🌡️', color: '#E76F51' },
+  spitup: { label: '吐奶', icon: '🤮', color: '#9B7EDE' },
+  water: { label: '喂水', icon: '🚰', color: '#76C7C0' },
+  supplement: { label: '喂养品', icon: '💊', color: '#D98CB3' },
+}
+
+const DIAPER_TEXT = { pee: '小便', poo: '大便', both: '大小便' }
+
+/** 某时刻在当天第几分钟（0~1440） */
+function minuteOf(date, dayStart) {
+  const m = Math.round((new Date(date).getTime() - dayStart.getTime()) / 60000)
+  return Math.max(0, Math.min(1440, m))
+}
+
+/** 分钟数 → HH:mm（1440 显示 24:00） */
+function minuteText(min) {
+  const m = Math.max(0, Math.min(1440, Math.round(min)))
+  if (m === 1440) return '24:00'
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+}
+
+/** 合并区间求覆盖分钟数（睡眠/排气操/洗澡可能重叠） */
+function unionMinutes(ranges) {
+  if (!ranges.length) return 0
+  const sorted = [...ranges].sort((a, b) => a.start - b.start)
+  let total = 0
+  let curStart = sorted[0].start
+  let curEnd = sorted[0].end
+  for (let i = 1; i < sorted.length; i++) {
+    const r = sorted[i]
+    if (r.start <= curEnd) {
+      curEnd = Math.max(curEnd, r.end)
+    } else {
+      total += curEnd - curStart
+      curStart = r.start
+      curEnd = r.end
+    }
+  }
+  total += curEnd - curStart
+  return total
+}
+
+/**
+ * 一天的 24 小时时钟盘数据
+ * GET /api/stats/clock?babyId=1&date=2026-11-08
+ */
+router.get('/clock', auth, async (req, res, next) => {
+  try {
+    const baby = await resolveBaby(req)
+    if (!baby) {
+      return res.apiError('请先选择宝宝', 400, 400)
+    }
+
+    const day = safeDate(req.query.date)
+    const from = startOfDay(day)
+    const to = endOfDay(day)
+
+    const [sleeps, exercises, baths, feedings, diapers, temperatures, spitUps, waters, supplements] =
+      await Promise.all([
+        SleepRecord.findAll({ where: sleepOverlapWhere(baby.id, from, to), raw: true }),
+        ExerciseRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        BathRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        FeedingRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        DiaperRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        TemperatureRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        SpitUpRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        WaterRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+        SupplementRecord.findAll({
+          where: { babyId: baby.id, time: { [Op.between]: [from, to] }, status: 1 },
+          raw: true,
+        }),
+      ])
+
+    // ===== 时段（有时长的活动，画成扇形）=====
+    const segments = []
+    const pushSegment = (kind, startMin, endMin, detail, icon) => {
+      const s = Math.max(0, Math.min(1440, Math.round(startMin)))
+      const e = Math.max(0, Math.min(1440, Math.round(endMin)))
+      if (e <= s) return
+      const meta = CLOCK_META[kind]
+      segments.push({
+        kind,
+        label: meta.label,
+        icon: icon || meta.icon,
+        color: meta.color,
+        start: s,
+        end: e,
+        startText: minuteText(s),
+        endText: minuteText(e),
+        minutes: e - s,
+        minutesText: formatDuration(e - s),
+        detail: detail || '',
+      })
+    }
+
+    // 睡眠（跨夜只画当天那段；进行中的画到当前时刻）
+    sleepSegmentsOfDay(sleeps, from, to).forEach((seg) => {
+      pushSegment(
+        'sleep',
+        minuteOf(seg.start, from),
+        minuteOf(seg.end, from),
+        seg.carryIn ? '昨晚入睡，今天起床' : seg.carryOut ? '今天入睡，明天起床' : ''
+      )
+    })
+
+    exercises.forEach((e) => {
+      const start = minuteOf(e.time, from)
+      pushSegment('exercise', start, start + (e.duration || 0), e.duration ? `${e.duration}分钟` : '', '🤸')
+    })
+
+    baths.forEach((b) => {
+      const start = minuteOf(b.time, from)
+      pushSegment('bath', start, start + (b.duration || 0), b.duration ? `${b.duration}分钟` : '', '🛁')
+    })
+
+    // ===== 事件（瞬时动作，画成轨道上的圆点）=====
+    const events = []
+    const pushEvent = (kind, time, detail, icon) => {
+      const meta = CLOCK_META[kind]
+      events.push({
+        kind,
+        label: meta.label,
+        icon: icon || meta.icon,
+        color: meta.color,
+        minute: minuteOf(time, from),
+        timeText: formatTime(time),
+        detail: detail || '',
+      })
+    }
+
+    feedings.forEach((f) => {
+      if (f.type === 'formula') {
+        pushEvent('formula', f.time, f.amount ? `${f.amount}ml` : '')
+      } else {
+        pushEvent('breast', f.time, f.duration ? `${f.duration}分钟` : '')
+      }
+    })
+    diapers.forEach((d) => pushEvent('diaper', d.time, DIAPER_TEXT[d.type] || ''))
+    temperatures.forEach((t) => {
+      const v = toNum(t.temperature)
+      pushEvent('temperature', t.time, v !== null ? `${v}℃` : '')
+    })
+    spitUps.forEach((s) => pushEvent('spitup', s.time, SPIT_UP_LABEL[s.level] || ''))
+    waters.forEach((w) => pushEvent('water', w.time, w.amount ? `${w.amount}ml` : ''))
+    supplements.forEach((s) => pushEvent('supplement', s.time, s.name || ''))
+
+    events.sort((a, b) => a.minute - b.minute)
+    segments.sort((a, b) => a.start - b.start)
+
+    // ===== 各类汇总（时长 + 次数）=====
+    const summaryMap = {}
+    const ensureSummary = (kind) => {
+      if (!summaryMap[kind]) {
+        const meta = CLOCK_META[kind]
+        summaryMap[kind] = {
+          kind,
+          label: meta.label,
+          icon: meta.icon,
+          color: meta.color,
+          minutes: 0,
+          count: 0,
+          minutesText: '',
+        }
+      }
+      return summaryMap[kind]
+    }
+    segments.forEach((s) => {
+      const item = ensureSummary(s.kind)
+      item.minutes += s.minutes
+      item.count += 1
+    })
+    events.forEach((e) => {
+      ensureSummary(e.kind).count += 1
+    })
+    const summary = Object.values(summaryMap)
+      .map((i) => ({ ...i, minutesText: i.minutes > 0 ? formatDuration(i.minutes) : '' }))
+      .sort((a, b) => b.minutes - a.minutes || b.count - a.count)
+
+    // ===== 覆盖度（只算有时长的活动，去重）=====
+    const coverageMinutes = unionMinutes(segments.map((s) => ({ start: s.start, end: s.end })))
+    const nowMinute = minuteOf(new Date(), from)
+    const isToday = formatDate(day) === formatDate(new Date())
+    const elapsedMinutes = isToday ? Math.max(1, nowMinute) : 1440
+
+    // ===== 时间轴（时段 + 事件合并，按时间排序）=====
+    const timeline = [
+      ...segments.map((s) => ({
+        type: 'segment',
+        kind: s.kind,
+        label: s.label,
+        icon: s.icon,
+        color: s.color,
+        sortKey: s.start,
+        timeText: `${s.startText} - ${s.endText}`,
+        title: `${s.label}${s.detail ? ' · ' + s.detail : ''}`,
+        durationText: s.minutesText,
+      })),
+      ...events.map((e) => ({
+        type: 'event',
+        kind: e.kind,
+        label: e.label,
+        icon: e.icon,
+        color: e.color,
+        sortKey: e.minute,
+        timeText: e.timeText,
+        title: `${e.label}${e.detail ? ' · ' + e.detail : ''}`,
+        durationText: '',
+      })),
+    ].sort((a, b) => a.sortKey - b.sortKey)
+
+    res.apiSuccess({
+      date: formatDate(day),
+      isToday,
+      nowMinute: isToday ? nowMinute : null,
+      segments,
+      events,
+      summary,
+      timeline,
+      coverageMinutes,
+      coverageText: formatDuration(coverageMinutes),
+      // 占全天比例（历史日期看这个）
+      coveragePercent: Math.round((coverageMinutes / 1440) * 100),
+      // 今天还没过完，用「占已过时间」更有意义
+      elapsedMinutes,
+      coveragePercentElapsed: Math.min(
+        100,
+        Math.round((coverageMinutes / elapsedMinutes) * 100)
+      ),
+      unrecordedMinutes: Math.max(0, elapsedMinutes - coverageMinutes),
+      unrecordedText: formatDuration(Math.max(0, elapsedMinutes - coverageMinutes)),
+      hasData: segments.length > 0 || events.length > 0,
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+/**
  * 近 N 天趋势
  */
 router.get('/trend', auth, async (req, res, next) => {

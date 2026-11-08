@@ -4,6 +4,7 @@
     "pages/login/login",
     "pages/score/score",
     "pages/stats/stats",
+    "pages/clock/clock",
     "pages/mine/mine",
     "pages/invite/invite",
     "pages/agreement/agreement"

@@ -1,0 +1,82 @@
+<view class="page">
+
+  <!-- ===== 游客模式 ===== -->
+  <view class="card guest-card" wx:if="{{guest}}">
+    <text class="empty-icon">🕒</text>
+    <text>登录后可以查看宝宝一天的作息时钟</text>
+    <view class="btn btn-primary go-btn" bindtap="goLogin">微信一键登录</view>
+  </view>
+
+  <block wx:else>
+    <!-- ===== 宝宝栏 ===== -->
+    <view class="baby-bar">
+      <view class="row">
+        <view class="baby-avatar">🕒</view>
+        <view class="col baby-meta">
+          <text class="baby-name">{{babyName || '宝宝'}}</text>
+          <text class="baby-sub">24 小时作息时钟</text>
+        </view>
+      </view>
+      <view class="switch-btn" bindtap="goRecord">去记录</view>
+    </view>
+
+    <!-- ===== 时钟盘 ===== -->
+    <view class="card">
+      <view class="date-bar">
+        <text class="date-nav" bindtap="onPrevDay">‹</text>
+        <text class="date-text">{{dateText}}{{isToday ? ' · 今天' : ''}}</text>
+        <text class="date-nav {{isToday ? 'date-nav-off' : ''}}" bindtap="onNextDay">›</text>
+      </view>
+
+      <view class="clock-wrap">
+        <canvas type="2d" id="clock" class="clock-canvas" bindtap="onCanvasTap"></canvas>
+      </view>
+
+      <view class="coverage-row">
+        <text class="coverage-main">{{coverageText}} 有记录</text>
+        <text class="coverage-sub">{{isToday ? '占已过时间' : '占全天'}} {{isToday ? coveragePercentElapsed : coveragePercent}}%</text>
+      </view>
+      <view class="coverage-bar">
+        <view class="coverage-fill" style="width: {{isToday ? coveragePercentElapsed : coveragePercent}}%"></view>
+      </view>
+      <text class="coverage-note" wx:if="{{isToday && unrecordedText}}">还有 {{unrecordedText}} 没有记录，补记一下更准哦</text>
+
+      <view class="active-tip" wx:if="{{activeTip}}">{{activeTip}}</view>
+      <text class="tap-hint" wx:if="{{hasData && !activeTip}}">点一下圆盘，看看那个时刻在做什么</text>
+    </view>
+
+    <!-- ===== 都在做什么 ===== -->
+    <view class="card" wx:if="{{summary.length > 0}}">
+      <view class="card-title">这一天都在做什么</view>
+      <view class="legend-grid">
+        <view class="legend-item" wx:for="{{summary}}" wx:key="kind">
+          <view class="legend-dot" style="background: {{item.color}}"></view>
+          <view class="col legend-main">
+            <text class="legend-label">{{item.icon}} {{item.label}}</text>
+            <text class="legend-sub">{{item.minutesText ? item.minutesText + ' · ' + item.count + ' 次' : item.count + ' 次'}}</text>
+          </view>
+        </view>
+      </view>
+      <view class="hint">外圈扇形＝持续的活动（睡眠/排气操/洗澡），内侧圆点＝当下的记录，灰色＝未记录</view>
+    </view>
+
+    <!-- ===== 时间轴 ===== -->
+    <view class="card" wx:if="{{timeline.length > 0}}">
+      <view class="card-title">当天时间轴</view>
+      <view class="tl-row" wx:for="{{timeline}}" wx:key="key">
+        <view class="tl-dot" style="background: {{item.color}}"></view>
+        <text class="tl-time">{{item.timeText}}</text>
+        <text class="tl-title">{{item.icon}} {{item.title}}</text>
+        <text class="tl-dur" wx:if="{{item.durationText}}">{{item.durationText}}</text>
+      </view>
+    </view>
+
+    <!-- ===== 空态 ===== -->
+    <view class="empty" wx:if="{{!loading && !hasData}}">
+      <text class="empty-icon">🌙</text>
+      <text>{{isToday ? '今天还没有记录' : '这天没有记录'}}，先去记一条吧</text>
+      <view class="btn btn-primary go-btn" bindtap="goRecord">去记录</view>
+    </view>
+  </block>
+
+</view>

@@ -230,3 +230,20 @@
 .cmp-flat {
   color: #bbb;
 }
+
+/* 24 小时时钟入口 */
+.clock-entry {
+  padding: 26rpx 30rpx;
+}
+
+.clock-entry-sub {
+  font-size: 24rpx;
+  color: #aaa;
+  margin-top: 6rpx;
+}
+
+.clock-entry-arrow {
+  font-size: 40rpx;
+  color: #ffb37a;
+  margin-left: 16rpx;
+}

@@ -389,6 +389,11 @@ Page({
     wx.switchTab({ url: '/pages/score/score' })
   },
 
+  /** 打开当天的 24 小时时钟盘 */
+  goClock() {
+    wx.navigateTo({ url: `/pages/clock/clock?date=${this.data.viewDate || todayString()}` })
+  },
+
   onSwitchBaby() {
     if (this.data.guest) {
       this.needLogin()

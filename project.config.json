@@ -38,7 +38,7 @@
     "condition": false
   },
   "compileType": "miniprogram",
-  "libVersion": "3.17.0",
+  "libVersion": "3.17.6",
   "appid": "wx410b41aa977ff923",
   "projectname": "orangepig",
   "condition": {},

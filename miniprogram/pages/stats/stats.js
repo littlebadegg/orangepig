@@ -80,6 +80,11 @@ Page({
     wx.switchTab({ url: '/pages/record/record' })
   },
 
+  /** 打开 24 小时作息时钟 */
+  goClock() {
+    wx.navigateTo({ url: `/pages/clock/clock?date=${todayString()}` })
+  },
+
   /** 游客模式去登录 */
   goLogin() {
     wx.navigateTo({ url: '/pages/login/login' })

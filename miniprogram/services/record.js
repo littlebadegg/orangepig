@@ -103,6 +103,11 @@ function trend(babyId, days) {
   return get('/stats/trend', { babyId, days })
 }
 
+/** 某天 24 小时时钟盘数据（babyId 走后端 currentBabyId 兜底） */
+function clock(date) {
+  return get('/stats/clock', { date })
+}
+
 /** 养育小贴士（按宝宝天数） */
 function getTips(babyId) {
   return get('/tips', { babyId })
@@ -129,5 +134,6 @@ module.exports = {
   update,
   dailyStats,
   trend,
+  clock,
   getTips,
 }

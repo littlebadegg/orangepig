@@ -89,7 +89,10 @@
 
   <!-- ===== 今日概览 ===== -->
   <view class="card" wx:if="{{stats}}">
-    <view class="card-title">今日概览</view>
+    <view class="row-between">
+      <text class="card-title">{{isToday ? '今日概览' : '当日概览'}}</text>
+      <text class="score-link" bindtap="goClock">24小时时钟 ›</text>
+    </view>
     <view class="overview">
       <view class="ov-item">
         <view class="row">
