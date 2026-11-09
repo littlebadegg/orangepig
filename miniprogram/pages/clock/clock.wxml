@@ -50,14 +50,14 @@
       <view class="card-title">这一天都在做什么</view>
       <view class="legend-grid">
         <view class="legend-item" wx:for="{{summary}}" wx:key="kind">
-          <view class="legend-dot" style="background: {{item.color}}"></view>
+          <view class="legend-dot" style="background: {{item.color}}; {{item.kind === 'idle' ? 'border: 2rpx solid #E8D5BC;' : ''}}"></view>
           <view class="col legend-main">
             <text class="legend-label">{{item.icon}} {{item.label}}</text>
-            <text class="legend-sub">{{item.minutesText ? item.minutesText + ' · ' + item.count + ' 次' : item.count + ' 次'}}</text>
+            <text class="legend-sub">{{item.kind === 'idle' ? item.minutesText + ' · 没有专门记录' : (item.minutesText ? item.minutesText + ' · ' + item.count + ' 次' : item.count + ' 次')}}</text>
           </view>
         </view>
       </view>
-      <view class="hint">外圈扇形＝持续的活动（睡眠/排气操/洗澡），内侧圆点＝当下的记录，灰色＝未记录</view>
+      <view class="hint">外圈每个色块＝这段时间在做什么（喂奶/尿片按时刻上色，米色＝清醒没记录），内侧圆点＝记录的准确时刻</view>
     </view>
 
     <!-- ===== 时间轴 ===== -->

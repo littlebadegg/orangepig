@@ -151,10 +151,10 @@ Page({
     const rDot = R * 0.46
     const rLabel = R * 0.93
 
-    // ---- 底层灰环（未记录）----
+    // ---- 底层米色环（清醒·未记录，保证整圈都有颜色）----
     ctx.beginPath()
     ctx.arc(cx, cy, rMid, 0, TAU)
-    ctx.strokeStyle = '#F0F1F3'
+    ctx.strokeStyle = '#FBEEDC'
     ctx.lineWidth = ringW
     ctx.stroke()
 
@@ -166,6 +166,18 @@ Page({
       ctx.beginPath()
       ctx.arc(cx, cy, rMid, angleOf(s.start + gap), angleOf(s.end - gap), false)
       ctx.strokeStyle = s.color
+      ctx.lineWidth = active ? ringW + 3 : ringW
+      ctx.stroke()
+    })
+
+    // ---- 事件示意色块（瞬时动作也在环上体现：喂奶 25 分钟 / 尿片 12 分钟 / 其余 6 分钟宽）----
+    events.forEach((e) => {
+      if (e.exhibitEnd <= e.exhibitStart) return
+      const gap = Math.min(0.6, (e.exhibitEnd - e.exhibitStart) / 6)
+      const active = this.active && this.active.key === `evt-${e.kind}-${e.minute}`
+      ctx.beginPath()
+      ctx.arc(cx, cy, rMid, angleOf(e.exhibitStart + gap), angleOf(e.exhibitEnd - gap), false)
+      ctx.strokeStyle = e.color
       ctx.lineWidth = active ? ringW + 3 : ringW
       ctx.stroke()
     })
@@ -266,28 +278,18 @@ Page({
         if (deg < 0) deg += 360
         const minute = Math.min(1439, Math.round((deg / 360) * 1440))
 
-        // 优先命中有时长的时段
+        // 优先命中事件示意色块（画在最上层），再命中时长时段
         let tip = ''
         let active = null
-        const seg = segments.find((s) => minute >= s.start && minute < s.end)
-        if (seg) {
-          tip = `${seg.icon} ${seg.label} ${seg.startText} - ${seg.endText}（${seg.minutesText}）${seg.detail ? ' · ' + seg.detail : ''}`
-          active = { key: `seg-${seg.kind}-${seg.start}` }
+        const evt = events.find((e) => minute >= e.exhibitStart && minute < e.exhibitEnd)
+        if (evt) {
+          tip = `${evt.icon} ${evt.timeText} ${evt.label}${evt.detail ? ' · ' + evt.detail : ''}`
+          active = { key: `evt-${evt.kind}-${evt.minute}` }
         } else {
-          // 找最近的事件（12 分钟内算命中）
-          let best = null
-          let bestDiff = 13
-          events.forEach((ev) => {
-            let diff = Math.abs(ev.minute - minute)
-            diff = Math.min(diff, 1440 - diff)
-            if (diff < bestDiff) {
-              bestDiff = diff
-              best = ev
-            }
-          })
-          if (best) {
-            tip = `${best.icon} ${best.timeText} ${best.label}${best.detail ? ' · ' + best.detail : ''}`
-            active = { key: `evt-${best.kind}-${best.minute}` }
+          const seg = segments.find((s) => minute >= s.start && minute < s.end)
+          if (seg) {
+            tip = `${seg.icon} ${seg.label} ${seg.startText} - ${seg.endText}（${seg.minutesText}）${seg.detail ? ' · ' + seg.detail : ''}`
+            active = { key: `seg-${seg.kind}-${seg.start}` }
           }
         }
 

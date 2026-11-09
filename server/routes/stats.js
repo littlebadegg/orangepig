@@ -542,6 +542,20 @@ const CLOCK_META = {
   supplement: { label: '喂养品', icon: '💊', color: '#D98CB3' },
 }
 
+/**
+ * 事件在外环上的「示意宽度」（分钟）
+ * 瞬时事件本身没有时长，画弧时用固定宽度体现到环上
+ */
+const CLOCK_EXHIBIT_MIN = {
+  formula: 25,
+  breast: 25,
+  diaper: 12,
+  temperature: 6,
+  spitup: 6,
+  water: 6,
+  supplement: 6,
+}
+
 const DIAPER_TEXT = { pee: '小便', poo: '大便', both: '大小便' }
 
 /** 某时刻在当天第几分钟（0~1440） */
@@ -672,18 +686,23 @@ router.get('/clock', auth, async (req, res, next) => {
       pushSegment('bath', start, start + (b.duration || 0), b.duration ? `${b.duration}分钟` : '', '🛁')
     })
 
-    // ===== 事件（瞬时动作，画成轨道上的圆点）=====
+    // ===== 事件（瞬时动作：外环画示意色块 + 内轨道画圆点）=====
     const events = []
     const pushEvent = (kind, time, detail, icon) => {
       const meta = CLOCK_META[kind]
+      const minute = minuteOf(time, from)
+      // 外环示意宽度：喂奶 25 分钟，尿片 12 分钟，其余 6 分钟
+      const w = CLOCK_EXHIBIT_MIN[kind] || 8
       events.push({
         kind,
         label: meta.label,
         icon: icon || meta.icon,
         color: meta.color,
-        minute: minuteOf(time, from),
+        minute,
         timeText: formatTime(time),
         detail: detail || '',
+        exhibitStart: Math.max(0, Math.min(1440, Math.round(minute - w / 2))),
+        exhibitEnd: Math.max(0, Math.min(1440, Math.round(minute + w / 2))),
       })
     }
 
@@ -740,6 +759,20 @@ router.get('/clock', auth, async (req, res, next) => {
     const nowMinute = minuteOf(new Date(), from)
     const isToday = formatDate(day) === formatDate(new Date())
     const elapsedMinutes = isToday ? Math.max(1, nowMinute) : 1440
+
+    // 清醒且没有专门记录的时间也上色（暖米色），保证整圈都有颜色
+    const idleMinutes = Math.max(0, elapsedMinutes - coverageMinutes)
+    if (idleMinutes > 0) {
+      summary.push({
+        kind: 'idle',
+        label: '清醒·未记录',
+        icon: '🌤️',
+        color: '#FBEEDC',
+        minutes: idleMinutes,
+        count: 0,
+        minutesText: formatDuration(idleMinutes),
+      })
+    }
 
     // ===== 时间轴（时段 + 事件合并，按时间排序）=====
     const timeline = [

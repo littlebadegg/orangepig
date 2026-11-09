@@ -115,6 +115,7 @@ async function main() {
   check('事件含奶粉/母乳/尿片/体温/喂水/喂养品', ['formula', 'breast', 'diaper', 'temperature', 'water', 'supplement'].every((k) => kinds.includes(k)), kinds)
   const formulaEvt = evts.find((e) => e.kind === 'formula')
   check('奶粉事件 08:00 150ml', formulaEvt && formulaEvt.minute === 480 && formulaEvt.detail === '150ml', formulaEvt)
+  check('奶粉事件外环示意块 08:00 前后 25 分钟', formulaEvt && formulaEvt.exhibitStart === 468 && formulaEvt.exhibitEnd === 493, formulaEvt)
   check('奶粉颜色是蓝色', formulaEvt && formulaEvt.color === '#4A90E2', formulaEvt && formulaEvt.color)
   const diaperEvt = evts.find((e) => e.kind === 'diaper')
   check('尿片事件带大小便文案', diaperEvt && diaperEvt.detail === '大小便', diaperEvt)
@@ -126,6 +127,8 @@ async function main() {
   check('汇总里睡眠 6小时 1 次', sleepSum && sleepSum.minutesText === '6小时' && sleepSum.count === 1, sleepSum)
   const formulaSum = summary.find((s) => s.kind === 'formula')
   check('汇总里奶粉 1 次', formulaSum && formulaSum.count === 1, formulaSum)
+  const idleSum = summary.find((s) => s.kind === 'idle')
+  check('汇总里有「清醒·未记录」米色项', idleSum && idleSum.color === '#FBEEDC' && idleSum.minutes > 0, idleSum)
 
   check('覆盖时间 ≥ 375 分钟（睡眠+排气操+洗澡）', d.coverageMinutes >= 375, d.coverageMinutes)
   check('覆盖文案非空', !!d.coverageText, d.coverageText)
