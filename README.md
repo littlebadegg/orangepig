@@ -87,6 +87,21 @@ node app.js      # 监听 3000
 接口地址在 `miniprogram/utils/config.js`，本地默认 `http://localhost:8080/api`（走 Docker 的 Nginx），
 直接跑 `node app.js` 时改成 `http://localhost:3000/api`。
 
+### 一键本地测试（不依赖 Docker）
+
+本地测试/冒烟全部用 node 直跑，不涉及任何 Docker 操作：
+
+```bash
+./scripts/dev-test.sh            # 自动启动本地服务 + 跑冒烟（默认 v14 + v13 + v9）
+./scripts/dev-test.sh v14        # 只跑指定版本
+KEEP=1 ./scripts/dev-test.sh     # 测完保留服务（方便开发者工具联调，日志 /tmp/orangepig-dev.log）
+ADMIN_PASSWORD=xxx ./scripts/dev-test.sh v12   # 需要后台口令的冒烟
+```
+
+脚本会自动复用已在 3000 端口运行的服务；自起的服务随脚本退出而停止。
+冒烟脚本必须从 `server/` 目录运行（dotenv 读 `server/.env`），脚本已处理。
+Docker 只用于生产部署（见下节）和镜像推送，本地测试不需要它。
+
 ## 生产部署
 
 见 [DEPLOY.md](./DEPLOY.md)，核心就三步：
